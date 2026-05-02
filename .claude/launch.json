@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "backend",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"],
+      "port": 8000
+    },
+    {
+      "name": "admin-web",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["admin-web/node_modules/.bin/vite", "--host"],
+      "port": 3000
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "frontend", "start"],
+      "port": 19000
+    }
+  ]
+}
