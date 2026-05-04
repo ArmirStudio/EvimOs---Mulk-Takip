@@ -437,6 +437,18 @@ CREATE TABLE IF NOT EXISTS public.contact_nicknames (
   UNIQUE(contact_id, user_id)
 );
 
+-- ── 1.20 team_messages ──────────────────────────────────────
+-- Office icinde kullanicilar arasinda iletisim
+CREATE TABLE IF NOT EXISTS public.team_messages (
+  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  office_id     UUID NOT NULL REFERENCES public.agencies(id) ON DELETE CASCADE,
+  sender_id     UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  content       TEXT NOT NULL CHECK (char_length(content) <= 4000),
+  file_url      TEXT,
+  file_name     TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- ── Add maintenance_requests technician columns ─────────────
 -- Arızaya atanan usta ve silinmiş usta snapshot'ı
 ALTER TABLE IF EXISTS public.maintenance_requests

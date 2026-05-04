@@ -494,19 +494,18 @@ CREATE POLICY "office_contacts_employee_read" ON public.office_contacts
     AND deleted_at IS NULL
   );
 
--- Tenant/Landlord: Aktif kontaktları görür (maintenance sahibi olmaları şartıyla)
+-- Tenant/Landlord: Aktif kontaktları görür (maintenance ile ilgili oldukları için)
 CREATE POLICY "office_contacts_tenant_read" ON public.office_contacts
   FOR SELECT USING (
     deleted_at IS NULL
-    AND office_id = (
-      SELECT COALESCE(p.agency_id, a.id)
+    AND office_id IN (
+      SELECT u.agency_id FROM public.users u
+      WHERE u.id = public.get_current_user_id()
+        AND u.agency_id IS NOT NULL
+      UNION
+      SELECT DISTINCT p.agent_id
       FROM public.properties p
-      JOIN public.agencies a ON p.agent_id = a.id
-      WHERE p.id IN (
-        SELECT property_id FROM public.maintenance_requests
-        WHERE assigned_technician_id = office_contacts.id
-      )
-      LIMIT 1
+      WHERE (p.tenant_id = public.get_current_user_id() OR p.landlord_id = public.get_current_user_id())
     )
   );
 
@@ -563,6 +562,37 @@ CREATE POLICY "contact_nicknames_read" ON public.contact_nicknames
 CREATE POLICY "contact_nicknames_write" ON public.contact_nicknames
   FOR ALL USING (user_id = public.get_current_user_id())
   WITH CHECK (user_id = public.get_current_user_id());
+
+
+-- ── TEAM_MESSAGES (Office Chat) ────────────────────────────
+DROP POLICY IF EXISTS "team_messages_read" ON public.team_messages;
+DROP POLICY IF EXISTS "team_messages_insert" ON public.team_messages;
+DROP POLICY IF EXISTS "team_messages_delete" ON public.team_messages;
+
+-- Kendi ofisinin mesajlarını oku
+CREATE POLICY "team_messages_read" ON public.team_messages
+  FOR SELECT USING (
+    office_id IN (
+      SELECT agency_id FROM public.users WHERE id = public.get_current_user_id()
+    )
+    OR public.get_current_user_role() = 'admin'
+  );
+
+-- Sadece kendi ofisine mesaj gönder
+CREATE POLICY "team_messages_insert" ON public.team_messages
+  FOR INSERT WITH CHECK (
+    sender_id = public.get_current_user_id()
+    AND office_id IN (
+      SELECT agency_id FROM public.users WHERE id = public.get_current_user_id()
+    )
+  );
+
+-- Kendi mesajlarını veya admin olarak hepsini sil
+CREATE POLICY "team_messages_delete" ON public.team_messages
+  FOR DELETE USING (
+    sender_id = public.get_current_user_id()
+    OR public.get_current_user_role() = 'admin'
+  );
 
 
 -- ============================================================

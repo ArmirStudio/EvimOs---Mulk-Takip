@@ -84,6 +84,42 @@ CREATE TRIGGER handle_updated_at
   BEFORE UPDATE ON public.maintenance_requests
   FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
 
+-- users updated_at trigger
+DROP TRIGGER IF EXISTS update_users_modtime ON public.users;
+CREATE TRIGGER update_users_modtime
+  BEFORE UPDATE ON public.users
+  FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
+
+-- receipts updated_at trigger
+DROP TRIGGER IF EXISTS update_receipts_modtime ON public.receipts;
+CREATE TRIGGER update_receipts_modtime
+  BEFORE UPDATE ON public.receipts
+  FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
+
+-- properties updated_at trigger
+DROP TRIGGER IF EXISTS update_properties_modtime ON public.properties;
+CREATE TRIGGER update_properties_modtime
+  BEFORE UPDATE ON public.properties
+  FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
+
+-- invites updated_at trigger
+DROP TRIGGER IF EXISTS update_invites_modtime ON public.invites;
+CREATE TRIGGER update_invites_modtime
+  BEFORE UPDATE ON public.invites
+  FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
+
+-- team_tasks updated_at trigger
+DROP TRIGGER IF EXISTS update_team_tasks_modtime ON public.team_tasks;
+CREATE TRIGGER update_team_tasks_modtime
+  BEFORE UPDATE ON public.team_tasks
+  FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
+
+-- announcements updated_at trigger
+DROP TRIGGER IF EXISTS update_announcements_modtime ON public.announcements;
+CREATE TRIGGER update_announcements_modtime
+  BEFORE UPDATE ON public.announcements
+  FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
+
 -- calendar_events otomatik temizlik fonksiyonu (12_fix baz alan)
 CREATE OR REPLACE FUNCTION public.cleanup_old_calendar_events()
 RETURNS VOID LANGUAGE plpgsql AS $$

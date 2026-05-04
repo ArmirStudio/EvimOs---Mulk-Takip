@@ -147,17 +147,6 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     throw error;
   }
 
-  if (!response.ok) {
-    let detail = 'API istegi basarisiz oldu';
-    try {
-      const errorPayload = await response.json();
-      detail = errorPayload?.detail || detail;
-    } catch {
-      // ignore non-json error bodies
-    }
-    throw new Error(`[${response.status}] ${url.pathname} — ${detail}`);
-  }
-
   return (await response.json()) as T;
 }
 
@@ -179,17 +168,6 @@ export async function publicApiRequest<T>(path: string, options: RequestOptions 
 
   if (!response.ok) {
     throw await buildApiRequestError(response, url.pathname, 'API istegi basarisiz oldu');
-  }
-
-  if (!response.ok) {
-    let detail = 'API istegi basarisiz oldu';
-    try {
-      const errorPayload = await response.json();
-      detail = errorPayload?.detail || detail;
-    } catch {
-      // ignore non-json error bodies
-    }
-    throw new Error(`[${response.status}] ${url.pathname} - ${detail}`);
   }
 
   return (await response.json()) as T;
