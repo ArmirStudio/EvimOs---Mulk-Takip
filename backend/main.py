@@ -78,6 +78,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
+
+@app.get("/api/health")
+def api_health_check():
+    return {"status": "ok"}
+
+
 @app.middleware("http")
 async def auth_resolve_rate_limit(request: Request, call_next):
     if (
