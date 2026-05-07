@@ -23,10 +23,49 @@ Backend FastAPI ile çalışır ve Supabase'e service-role ile bağlanır. Mobil
   - `ALLOWED_ORIGINS`
 - Frontend prod bağlantısı: `EXPO_PUBLIC_API_URL=https://<railway-app>.up.railway.app`
 - `EXPO_PUBLIC_API_URL` sonuna `/api` eklenmez; client otomatik ekler.
-- CORS originleri `ALLOWED_ORIGINS` içinde tutulur.
+
+## Team Endpointleri
+
+### Görevler
+- `GET /team/tasks` — ofis görevleri listesi
+- `GET /team/tasks/{id}` — görev detayı
+- `POST /team/tasks` — görev oluşturma (manager)
+- `PATCH /team/tasks/{id}` — görev güncelleme (manager)
+- `POST /team/tasks/{id}/transition` — durum geçişi (start/complete/cancel)
+
+### Duyurular
+- `GET /team/announcements` — duyuru listesi
+- `POST /team/announcements` — duyuru oluşturma (manager)
+- `POST /team/announcements/{id}/read` — okundu işaretle
+- `POST /team/announcements/{id}/remind` — okunmayanlara hatırlat
+
+### Mesajlar
+- `GET /team/messages` — mesaj listesi (reply_to inline önizleme dahil)
+- `POST /team/messages` — mesaj gönder; payload: `{ body, reply_to_id? }`
+- `POST /team/messages/read` — kullanıcının son okuma zamanını UPSERT eder
+- `GET /team/messages/read-status` — tüm ofis üyelerinin `last_read_at` değerleri
+
+### Toplantılar
+- `GET /team/meetings` — toplantı listesi
+- `POST /team/meetings` — toplantı oluştur (manager)
+- `PATCH /team/meetings/{id}` — toplantı güncelle (manager)
+- `POST /team/meetings/{id}/complete` — tamamlandı (manager)
+- `DELETE /team/meetings/{id}` — iptal et (manager)
+
+### Harcamalar
+- `GET /team/expenses/summary` — 12 aylık kategori özeti (agent only)
+- `GET /team/expenses` — ofis harcamaları listesi
+- `POST /team/expenses` — harcama ekle; miktar > 0 ve YYYY-MM-DD tarih zorunlu
+- `PATCH /team/expenses/{id}` — açıklama/tarih/makbuz_url güncelle; miktar ve kategori değiştirilemez
+- `DELETE /team/expenses/{id}` — sil; agent tümünü, employee yalnızca kendi kaydını silebilir
+
+Not: `/team/expenses/summary` path'i `/team/expenses/{id}` ile çakışmaması için liste endpoint'inden önce tanımlanmıştır.
+
+### Rapor
+- `GET /team/report?range=this_week|last_week|this_month|last_month` — dönem bazlı ekip performans raporu
 
 ## Invite Endpointleri
-- `POST /api/invites`: davet oluşturur.
+- `POST /api/invites`: davet oluşturur (tenant/landlord/employee).
 - `GET /api/public/invites/{token}`: link token doğrular.
 - `POST /api/public/invites/{token}/register`: token ile pending hesap oluşturur.
 - `POST /api/public/invites/lookup-code`: davet kodunu doğrular.
@@ -42,3 +81,4 @@ Backend FastAPI ile çalışır ve Supabase'e service-role ile bağlanır. Mobil
 - Rol davetten gelir; register payload role override edemez.
 - Telefon backend'de `+905321234567` formatına normalize edilir.
 - Full employee takma adı API response'unda göremez; agent/admin görebilir.
+- Client tarafında `service_role` anahtarı kullanılmaz.

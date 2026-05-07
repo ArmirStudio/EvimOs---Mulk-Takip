@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import type { AppThemeTokens } from '../app/theme';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -50,6 +51,41 @@ export const publicSurface = {
   fieldDangerBg: '#FFF1EF',
   fieldDangerBorder: '#E8B5AE',
 } as const;
+
+export type PublicSurface = typeof publicSurface;
+
+function isDarkTheme(theme: AppThemeTokens): boolean {
+  const hex = theme.colors.background.replace('#', '');
+  if (hex.length < 6) return false;
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  const lum = (r * 299 + g * 587 + b * 114) / 1000;
+  return lum < 128;
+}
+
+export function getPublicSurface(theme: AppThemeTokens): PublicSurface {
+  if (!isDarkTheme(theme)) return publicSurface;
+  return {
+    heroPanel: theme.colors.surface,
+    heroPanelStrong: theme.colors.surface2,
+    heroTint: 'rgba(160, 207, 207, 0.10)',
+    heroTintStrong: 'rgba(160, 207, 207, 0.18)',
+    accentSoft: theme.colors.surface2,
+    accentStrong: theme.colors.copper,
+    panel: theme.colors.surface,
+    panelBorder: theme.colors.border,
+    panelShadow: 'rgba(0, 0, 0, 0.45)',
+    chipBg: theme.colors.primaryLight,
+    chipText: theme.colors.primary,
+    warmText: theme.colors.textSecondary,
+    fieldBg: theme.colors.surface2,
+    fieldBorder: theme.colors.border,
+    fieldFocus: theme.colors.primary,
+    fieldDangerBg: theme.colors.errorLight,
+    fieldDangerBorder: theme.colors.error,
+  };
+}
 
 export const landingHighlights: { icon: IconName; title: string; description: string }[] = [
   {

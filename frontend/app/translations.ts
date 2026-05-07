@@ -773,6 +773,8 @@ export const tr = {
       tasks: 'Görevler',
       announcements: 'Duyurular',
       messages: 'Mesajlar',
+      meetings: 'Toplantılar',
+      expenses: 'Harcamalar',
       report: 'Rapor',
     },
     reportRanges: {

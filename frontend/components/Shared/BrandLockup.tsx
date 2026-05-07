@@ -1,6 +1,6 @@
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { brand, publicSurface } from '../../constants/brand';
+import { brand, getPublicSurface } from '../../constants/brand';
 import { createThemedStyles, useAppTheme } from '../../app/theme';
 
 const logoSource = require('../../assets/images/logo.png');
@@ -33,7 +33,7 @@ export default function BrandLockup({
   const styles = useStyles();
   const metrics = SIZE_MAP[size];
   const isInverse = tone === 'inverse';
-  const subtitleColor = isInverse ? theme.colors.textInverse : publicSurface.warmText;
+  const subtitleColor = isInverse ? theme.colors.textInverse : getPublicSurface(theme).warmText;
   const alignmentStyle = align === 'center' ? styles.center : styles.left;
 
   return (

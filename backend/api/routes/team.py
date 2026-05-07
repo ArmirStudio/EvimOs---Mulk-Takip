@@ -11,9 +11,13 @@ from core.notifications import notify_user, notify_users
 from core.security import get_current_user
 from models.schemas import (
     CreateAnnouncementRequest,
+    CreateExpenseRequest,
+    CreateTeamMeetingRequest,
     CreateTeamMessageRequest,
     CreateTeamTaskRequest,
     TeamTaskTransitionRequest,
+    UpdateExpenseRequest,
+    UpdateTeamMeetingRequest,
     UpdateTeamTaskRequest,
 )
 
@@ -438,12 +442,24 @@ def _serialize_announcement(
     }
 
 
-def _serialize_message(message: dict, user_map: dict[str, dict]) -> dict:
+def _serialize_message(message: dict, user_map: dict[str, dict], reply_map: dict[str, dict] | None = None) -> dict:
     sender = user_map.get(message.get("sender_id"))
+    reply_to = None
+    reply_to_id = message.get("reply_to_id")
+    if reply_to_id and reply_map:
+        ref = reply_map.get(reply_to_id)
+        if ref:
+            ref_sender = user_map.get(ref.get("sender_id"))
+            reply_to = {
+                "id": reply_to_id,
+                "body": (ref.get("body") or "")[:100],
+                "sender_name": ref_sender.get("full_name") if ref_sender else "Kullanıcı",
+            }
     return {
         **message,
         "sender": sender,
         "sender_name": sender.get("full_name") if sender else None,
+        "reply_to": reply_to,
     }
 
 
@@ -887,7 +903,7 @@ def list_team_messages(current_user: dict = Depends(get_current_user)):
         messages = (
             supabase.table("team_messages")
             .select("*")
-            .eq("office_id", office_owner_id)
+            .eq("office_owner_id", office_owner_id)
             .order("created_at", desc=False)
             .limit(200)
             .execute()
@@ -895,7 +911,8 @@ def list_team_messages(current_user: dict = Depends(get_current_user)):
             or []
         )
         user_map = _fetch_user_map([message.get("sender_id") for message in messages])
-        return {"messages": [_serialize_message(message, user_map) for message in messages]}
+        reply_map = {m["id"]: m for m in messages}
+        return {"messages": [_serialize_message(message, user_map, reply_map) for message in messages]}
     except Exception:
         logger.exception("Team message list query failed for office %s", office_owner_id)
         return {"messages": []}
@@ -911,14 +928,18 @@ def create_team_message(request: CreateTeamMessageRequest, current_user: dict = 
     if len(body) > 2000:
         raise HTTPException(status_code=400, detail="Mesaj en fazla 2000 karakter olabilir")
 
+    insert_payload: dict = {
+        "office_owner_id": office_owner_id,
+        "sender_id": current_user["id"],
+        "body": body,
+        "created_at": _now(),
+    }
+    if request.reply_to_id:
+        insert_payload["reply_to_id"] = request.reply_to_id
+
     created_result = (
         supabase.table("team_messages")
-        .insert({
-            "office_id": office_owner_id,
-            "sender_id": current_user["id"],
-            "body": body,
-            "created_at": _now(),
-        })
+        .insert(insert_payload)
         .execute()
     )
     if not created_result.data:
@@ -945,6 +966,49 @@ def create_team_message(request: CreateTeamMessageRequest, current_user: dict = 
         "success": True,
         "message": _serialize_message(created_message, user_map),
     }
+
+
+@router.post("/messages/read")
+def mark_messages_read(current_user: dict = Depends(get_current_user)):
+    office_owner_id = _require_office_user(current_user)
+    try:
+        supabase.table("team_message_reads").upsert({
+            "office_owner_id": office_owner_id,
+            "user_id": current_user["id"],
+            "last_read_at": _now(),
+        }, on_conflict="office_owner_id,user_id").execute()
+        return {"success": True}
+    except Exception:
+        logger.exception("mark_messages_read failed for user %s", current_user.get("id"))
+        return {"success": False}
+
+
+@router.get("/messages/read-status")
+def get_message_read_status(current_user: dict = Depends(get_current_user)):
+    office_owner_id = _require_office_user(current_user)
+    try:
+        rows = (
+            supabase.table("team_message_reads")
+            .select("user_id, last_read_at")
+            .eq("office_owner_id", office_owner_id)
+            .execute()
+            .data
+            or []
+        )
+        user_ids = [r.get("user_id") for r in rows]
+        user_map = _fetch_user_map(user_ids)
+        readers = [
+            {
+                "user_id": r.get("user_id"),
+                "user_name": user_map.get(r.get("user_id"), {}).get("full_name"),
+                "last_read_at": r.get("last_read_at"),
+            }
+            for r in rows
+        ]
+        return {"readers": readers}
+    except Exception:
+        logger.exception("get_message_read_status failed for office %s", office_owner_id)
+        return {"readers": []}
 
 
 @router.get("/tasks")
@@ -1302,3 +1366,328 @@ def remind_announcement(announcement_id: str, current_user: dict = Depends(get_c
         reminded_count += 1
 
     return {"success": True, "reminded_count": reminded_count}
+
+
+def _get_meeting_or_404(meeting_id: str) -> dict:
+    result = supabase.table("team_meetings").select("*").eq("id", meeting_id).maybe_single().execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Toplanti bulunamadi")
+    return result.data
+
+
+def _serialize_meeting(meeting: dict, user_map: dict[str, dict]) -> dict:
+    creator = user_map.get(meeting.get("created_by"))
+    return {
+        **meeting,
+        "creator": creator,
+        "creator_name": creator.get("full_name") if creator else None,
+    }
+
+
+@router.get("/meetings")
+def list_meetings(current_user: dict = Depends(get_current_user)):
+    office_owner_id = _require_office_user(current_user)
+    try:
+        meetings = (
+            supabase.table("team_meetings")
+            .select("*")
+            .eq("office_owner_id", office_owner_id)
+            .order("scheduled_at", desc=False)
+            .execute()
+            .data
+            or []
+        )
+        user_map = _fetch_user_map([m.get("created_by") for m in meetings])
+        return {"meetings": [_serialize_meeting(m, user_map) for m in meetings]}
+    except Exception:
+        logger.exception("Meeting list query failed for office %s", office_owner_id)
+        return {"meetings": []}
+
+
+@router.post("/meetings")
+def create_meeting(request: CreateTeamMeetingRequest, current_user: dict = Depends(get_current_user)):
+    office_owner_id = _require_manager(current_user)
+    title = request.title.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Toplanti basligi zorunludur")
+    _parse_iso_date(request.scheduled_at, "scheduled_at")
+
+    now = _now()
+    doc = {
+        "office_owner_id": office_owner_id,
+        "created_by": current_user["id"],
+        "title": title,
+        "description": request.description.strip() if request.description else None,
+        "scheduled_at": request.scheduled_at,
+        "notes": request.notes.strip() if request.notes else None,
+        "status": "scheduled",
+        "created_at": now,
+        "updated_at": now,
+    }
+    result = supabase.table("team_meetings").insert(doc).execute()
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Toplanti kaydedilemedi")
+
+    created = result.data[0]
+    user_map = _fetch_user_map([created.get("created_by")])
+    return {"success": True, "meeting": _serialize_meeting(created, user_map)}
+
+
+@router.patch("/meetings/{meeting_id}")
+def update_meeting(meeting_id: str, request: UpdateTeamMeetingRequest, current_user: dict = Depends(get_current_user)):
+    office_owner_id = _require_manager(current_user)
+    meeting = _get_meeting_or_404(meeting_id)
+    if meeting.get("office_owner_id") != office_owner_id:
+        raise HTTPException(status_code=404, detail="Toplanti bulunamadi")
+    if meeting.get("status") in ["completed", "cancelled"]:
+        raise HTTPException(status_code=400, detail="Tamamlanan veya iptal edilen toplanti duzenlenemez")
+
+    update_data: dict = {"updated_at": _now()}
+    if request.title is not None:
+        title = request.title.strip()
+        if not title:
+            raise HTTPException(status_code=400, detail="Toplanti basligi bos olamaz")
+        update_data["title"] = title
+    if request.description is not None:
+        update_data["description"] = request.description.strip() or None
+    if request.scheduled_at is not None:
+        _parse_iso_date(request.scheduled_at, "scheduled_at")
+        update_data["scheduled_at"] = request.scheduled_at
+    if request.notes is not None:
+        update_data["notes"] = request.notes.strip() or None
+
+    result = (
+        supabase.table("team_meetings")
+        .update(update_data)
+        .eq("id", meeting_id)
+        .select("*")
+        .single()
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Toplanti guncellenemedi")
+
+    user_map = _fetch_user_map([result.data.get("created_by")])
+    return {"success": True, "meeting": _serialize_meeting(result.data, user_map)}
+
+
+@router.post("/meetings/{meeting_id}/complete")
+def complete_meeting(meeting_id: str, current_user: dict = Depends(get_current_user)):
+    office_owner_id = _require_manager(current_user)
+    meeting = _get_meeting_or_404(meeting_id)
+    if meeting.get("office_owner_id") != office_owner_id:
+        raise HTTPException(status_code=404, detail="Toplanti bulunamadi")
+    if meeting.get("status") != "scheduled":
+        raise HTTPException(status_code=400, detail="Yalnizca planlanan toplanti tamamlanabilir")
+
+    result = (
+        supabase.table("team_meetings")
+        .update({"status": "completed", "updated_at": _now()})
+        .eq("id", meeting_id)
+        .select("*")
+        .single()
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Toplanti guncellenemedi")
+
+    user_map = _fetch_user_map([result.data.get("created_by")])
+    return {"success": True, "meeting": _serialize_meeting(result.data, user_map)}
+
+
+@router.delete("/meetings/{meeting_id}")
+def cancel_meeting(meeting_id: str, current_user: dict = Depends(get_current_user)):
+    office_owner_id = _require_manager(current_user)
+    meeting = _get_meeting_or_404(meeting_id)
+    if meeting.get("office_owner_id") != office_owner_id:
+        raise HTTPException(status_code=404, detail="Toplanti bulunamadi")
+
+    result = (
+        supabase.table("team_meetings")
+        .update({"status": "cancelled", "updated_at": _now()})
+        .eq("id", meeting_id)
+        .select("*")
+        .single()
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Toplanti iptal edilemedi")
+
+    user_map = _fetch_user_map([result.data.get("created_by")])
+    return {"success": True, "meeting": _serialize_meeting(result.data, user_map)}
+
+
+# ── Expenses ────────────────────────────────────────────────────────────────
+
+EXPENSE_CATEGORY_LABELS = {
+    "kira": "Kira",
+    "fatura": "Fatura",
+    "ulasim": "Ulaşım",
+    "yemek": "Yemek",
+    "malzeme": "Malzeme",
+    "diger": "Diğer",
+}
+
+
+def _get_expense_or_404(expense_id: str) -> dict:
+    result = supabase.table("office_expenses").select("*").eq("id", expense_id).maybe_single().execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Harcama bulunamadi")
+    return result.data
+
+
+def _serialize_expense(expense: dict, user_map: dict[str, dict]) -> dict:
+    creator = user_map.get(expense.get("created_by"))
+    return {
+        **expense,
+        "amount": float(expense.get("amount") or 0),
+        "category_label": EXPENSE_CATEGORY_LABELS.get(expense.get("category", ""), expense.get("category", "")),
+        "creator": creator,
+        "creator_name": creator.get("full_name") if creator else None,
+    }
+
+
+def _assert_can_modify_expense(current_user: dict, expense: dict, office_owner_id: str) -> None:
+    if expense.get("office_owner_id") != office_owner_id:
+        raise HTTPException(status_code=404, detail="Harcama bulunamadi")
+    if current_user.get("role") == "agent":
+        return
+    if expense.get("created_by") != current_user.get("id"):
+        raise HTTPException(status_code=403, detail="Bu harcamayi yalnizca ekleyen kisi duzenleyebilir")
+
+
+@router.get("/expenses/summary")
+def get_expense_summary(current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "agent":
+        raise HTTPException(status_code=403, detail="Bu endpoint yalnizca agent icin aciktir")
+    office_owner_id = _require_office_user(current_user)
+    try:
+        expenses = (
+            supabase.table("office_expenses")
+            .select("amount, category, expense_date")
+            .eq("office_owner_id", office_owner_id)
+            .execute()
+            .data
+            or []
+        )
+    except Exception:
+        logger.exception("Expense summary query failed for office %s", office_owner_id)
+        return {"summary": []}
+
+    monthly: dict[str, dict] = {}
+    for expense in expenses:
+        try:
+            date_str = str(expense.get("expense_date", ""))
+            year_month = date_str[:7]
+        except Exception:
+            continue
+        if year_month not in monthly:
+            monthly[year_month] = {"year_month": year_month, "total": 0.0, "by_category": {}}
+        monthly[year_month]["total"] += float(expense.get("amount") or 0)
+        cat = expense.get("category", "diger")
+        monthly[year_month]["by_category"][cat] = (
+            monthly[year_month]["by_category"].get(cat, 0.0) + float(expense.get("amount") or 0)
+        )
+
+    summary = []
+    for ym, data in sorted(monthly.items(), reverse=True)[:12]:
+        by_category = [
+            {"category": cat, "label": EXPENSE_CATEGORY_LABELS.get(cat, cat), "total": round(amount, 2)}
+            for cat, amount in sorted(data["by_category"].items(), key=lambda x: -x[1])
+        ]
+        summary.append({"year_month": ym, "total": round(data["total"], 2), "by_category": by_category})
+
+    return {"summary": summary}
+
+
+@router.get("/expenses")
+def list_expenses(current_user: dict = Depends(get_current_user)):
+    office_owner_id = _require_office_user(current_user)
+    try:
+        expenses = (
+            supabase.table("office_expenses")
+            .select("*")
+            .eq("office_owner_id", office_owner_id)
+            .order("expense_date", desc=True)
+            .execute()
+            .data
+            or []
+        )
+        user_map = _fetch_user_map([e.get("created_by") for e in expenses])
+        return {"expenses": [_serialize_expense(e, user_map) for e in expenses]}
+    except Exception:
+        logger.exception("Expense list query failed for office %s", office_owner_id)
+        return {"expenses": []}
+
+
+@router.post("/expenses")
+def create_expense(request: CreateExpenseRequest, current_user: dict = Depends(get_current_user)):
+    office_owner_id = _require_office_user(current_user)
+    if request.amount <= 0:
+        raise HTTPException(status_code=400, detail="Tutar sifirdan buyuk olmalidir")
+    try:
+        datetime.strptime(request.expense_date, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Tarih YYYY-MM-DD formatinda olmalidir")
+
+    now = _now()
+    doc = {
+        "office_owner_id": office_owner_id,
+        "created_by": current_user["id"],
+        "amount": request.amount,
+        "category": request.category,
+        "description": request.description.strip() if request.description else None,
+        "expense_date": request.expense_date,
+        "receipt_url": request.receipt_url,
+        "created_at": now,
+        "updated_at": now,
+    }
+    result = supabase.table("office_expenses").insert(doc).execute()
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Harcama kaydedilemedi")
+
+    created = result.data[0]
+    user_map = _fetch_user_map([created.get("created_by")])
+    return {"success": True, "expense": _serialize_expense(created, user_map)}
+
+
+@router.patch("/expenses/{expense_id}")
+def update_expense(expense_id: str, request: UpdateExpenseRequest, current_user: dict = Depends(get_current_user)):
+    office_owner_id = _require_office_user(current_user)
+    expense = _get_expense_or_404(expense_id)
+    _assert_can_modify_expense(current_user, expense, office_owner_id)
+
+    update_data: dict = {"updated_at": _now()}
+    if request.description is not None:
+        update_data["description"] = request.description.strip() or None
+    if request.expense_date is not None:
+        try:
+            datetime.strptime(request.expense_date, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Tarih YYYY-MM-DD formatinda olmalidir")
+        update_data["expense_date"] = request.expense_date
+    if request.receipt_url is not None:
+        update_data["receipt_url"] = request.receipt_url or None
+
+    result = (
+        supabase.table("office_expenses")
+        .update(update_data)
+        .eq("id", expense_id)
+        .select("*")
+        .single()
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Harcama guncellenemedi")
+
+    user_map = _fetch_user_map([result.data.get("created_by")])
+    return {"success": True, "expense": _serialize_expense(result.data, user_map)}
+
+
+@router.delete("/expenses/{expense_id}")
+def delete_expense(expense_id: str, current_user: dict = Depends(get_current_user)):
+    office_owner_id = _require_office_user(current_user)
+    expense = _get_expense_or_404(expense_id)
+    _assert_can_modify_expense(current_user, expense, office_owner_id)
+    supabase.table("office_expenses").delete().eq("id", expense_id).execute()
+    return {"success": True}

@@ -543,11 +543,19 @@ export function listTeamMessages() {
   return apiRequest<{ messages: any[] }>('/team/messages');
 }
 
-export function createTeamMessage(payload: { body: string }) {
+export function createTeamMessage(payload: { body: string; reply_to_id?: string | null }) {
   return apiRequest<{ success: boolean; message: any }>('/team/messages', {
     method: 'POST',
     body: payload,
   });
+}
+
+export function markMessagesRead() {
+  return apiRequest('/team/messages/read', { method: 'POST' });
+}
+
+export function getMessageReadStatus() {
+  return apiRequest<{ readers: any[] }>('/team/messages/read-status');
 }
 
 export function createTeamAnnouncement(payload: {
@@ -576,6 +584,84 @@ export function remindAnnouncement(announcementId: string) {
   });
 }
 
+export function listMeetings() {
+  return apiRequest<{ meetings: any[] }>('/team/meetings');
+}
+
+export function createMeeting(payload: {
+  title: string;
+  description?: string | null;
+  scheduled_at: string;
+  notes?: string | null;
+}) {
+  return apiRequest<{ success: boolean; meeting: any }>('/team/meetings', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+export function updateMeeting(meetingId: string, payload: {
+  title?: string;
+  description?: string | null;
+  scheduled_at?: string;
+  notes?: string | null;
+}) {
+  return apiRequest<{ success: boolean; meeting: any }>(`/team/meetings/${meetingId}`, {
+    method: 'PATCH',
+    body: payload,
+  });
+}
+
+export function completeMeeting(meetingId: string) {
+  return apiRequest<{ success: boolean; meeting: any }>(`/team/meetings/${meetingId}/complete`, {
+    method: 'POST',
+  });
+}
+
+export function cancelMeeting(meetingId: string) {
+  return apiRequest<{ success: boolean; meeting: any }>(`/team/meetings/${meetingId}`, {
+    method: 'DELETE',
+  });
+}
+
+export function listExpenses() {
+  return apiRequest<{ expenses: any[] }>('/team/expenses');
+}
+
+export function getExpenseSummary() {
+  return apiRequest<{ summary: any[] }>('/team/expenses/summary');
+}
+
+export function createExpense(payload: {
+  amount: number;
+  category: string;
+  description?: string | null;
+  expense_date: string;
+  receipt_url?: string | null;
+}) {
+  return apiRequest<{ success: boolean; expense: any }>('/team/expenses', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+export function updateExpense(expenseId: string, payload: {
+  description?: string | null;
+  expense_date?: string;
+  receipt_url?: string | null;
+}) {
+  return apiRequest<{ success: boolean; expense: any }>(`/team/expenses/${expenseId}`, {
+    method: 'PATCH',
+    body: payload,
+  });
+}
+
+export function deleteExpense(expenseId: string) {
+  return apiRequest<{ success: boolean }>(`/team/expenses/${expenseId}`, {
+    method: 'DELETE',
+  });
+}
+
 export function getTeamReport(range: TeamReportRange) {
   return apiRequest<TeamReportPayload>('/team/report', {
     query: { range },
@@ -593,7 +679,7 @@ export function resolveLoginIdentifier(identifier: string) {
   });
 }
 
-export type InviteRole = 'tenant' | 'landlord';
+export type InviteRole = 'tenant' | 'landlord' | 'employee';
 
 export type PendingInviteUser = {
   id: string;
@@ -701,10 +787,13 @@ export function getPendingInviteDetail(userId: string) {
   return apiRequest<{ pending: PendingInviteUser }>(`/invites/pending/${userId}`);
 }
 
-export function approvePendingInvite(userId: string) {
+export function approvePendingInvite(userId: string, employeeAccessLevel?: 'full' | 'limited') {
   return apiRequest<{ success: boolean; user: any }>(`/invites/pending/${userId}`, {
     method: 'PATCH',
-    body: { action: 'approve' },
+    body: {
+      action: 'approve',
+      ...(employeeAccessLevel ? { employee_access_level: employeeAccessLevel } : {}),
+    },
   });
 }
 

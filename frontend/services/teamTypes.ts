@@ -1,4 +1,4 @@
-export type TeamTab = 'team' | 'tasks' | 'announcements' | 'messages' | 'report';
+export type TeamTab = 'team' | 'tasks' | 'announcements' | 'messages' | 'meetings' | 'expenses' | 'report';
 
 export type TeamTaskType =
   | 'property_showing'
@@ -99,14 +99,96 @@ export type TeamAnnouncement = {
   viewer_is_read: boolean;
 };
 
+export type TeamMessageReplyPreview = {
+  id: string;
+  body: string;
+  sender_name: string | null;
+};
+
 export type TeamMessage = {
   id: string;
-  office_id: string;
+  office_owner_id: string;
   sender_id: string | null;
   body: string;
   created_at: string;
+  reply_to_id?: string | null;
+  reply_to?: TeamMessageReplyPreview | null;
   sender?: TeamMember | null;
   sender_name?: string | null;
+};
+
+export type TeamMessageReadStatus = {
+  user_id: string;
+  user_name: string | null;
+  last_read_at: string;
+};
+
+export type TeamMeetingStatus = 'scheduled' | 'completed' | 'cancelled';
+
+export type TeamMeeting = {
+  id: string;
+  office_owner_id: string;
+  created_by: string | null;
+  title: string;
+  description?: string | null;
+  scheduled_at: string;
+  notes?: string | null;
+  status: TeamMeetingStatus;
+  created_at: string;
+  updated_at: string;
+  creator?: TeamMember | null;
+  creator_name?: string | null;
+};
+
+export type ExpenseCategory = 'kira' | 'fatura' | 'ulasim' | 'yemek' | 'malzeme' | 'diger';
+
+export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
+  kira: 'Kira',
+  fatura: 'Fatura',
+  ulasim: 'Ulaşım',
+  yemek: 'Yemek',
+  malzeme: 'Malzeme',
+  diger: 'Diğer',
+};
+
+export const EXPENSE_CATEGORY_ICONS: Record<ExpenseCategory, string> = {
+  kira: 'home',
+  fatura: 'bolt',
+  ulasim: 'directions-car',
+  yemek: 'restaurant',
+  malzeme: 'inventory',
+  diger: 'more-horiz',
+};
+
+export const EXPENSE_CATEGORY_COLORS: Record<ExpenseCategory, string> = {
+  kira: '#4A90D9',
+  fatura: '#F5A623',
+  ulasim: '#7ED321',
+  yemek: '#E74C3C',
+  malzeme: '#9B59B6',
+  diger: '#95A5A6',
+};
+
+export type OfficeExpense = {
+  id: string;
+  office_owner_id: string;
+  created_by: string | null;
+  amount: number;
+  category: ExpenseCategory;
+  category_label?: string;
+  description?: string | null;
+  expense_date: string;
+  receipt_url?: string | null;
+  created_at: string;
+  updated_at: string;
+  creator?: TeamMember | null;
+  creator_name?: string | null;
+};
+
+export type ExpenseMonthlySummary = {
+  year_month: string;
+  total: number;
+  by_category: { category: ExpenseCategory; label: string; total: number }[];
 };
 
 export type TeamReportRange = 'this_week' | 'last_week' | 'this_month' | 'last_month';

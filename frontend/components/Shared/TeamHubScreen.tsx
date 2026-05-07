@@ -26,12 +26,12 @@ import { tr } from '../../app/translations';
 import { createThemedStyles, useAppTheme } from '../../app/theme';
 import { useUserData } from '../../hooks/useUserData';
 import {
-  createTeamMessage,
   createUser,
   createTeamAnnouncement,
-  getTeamReport,
   getTeamTask,
+  listExpenses,
   listTeamAnnouncements,
+  listMeetings,
   listTeamMessages,
   listTeamMembers,
   listTeamTasks,
@@ -40,11 +40,11 @@ import {
   transitionTeamTask,
 } from '../../services/appApi';
 import type {
+  OfficeExpense,
   TeamAnnouncement,
+  TeamMeeting,
   TeamMember,
   TeamMessage,
-  TeamReportPayload,
-  TeamReportRange,
   TeamTab,
   TeamTask,
 } from '../../services/teamTypes';
@@ -60,8 +60,8 @@ import {
   TEAM_TASK_FILTER_LABELS,
 } from '../../utils/teamPresentation';
 import LocationPicker from './LocationPicker';
-import TeamMessagesPanel from './TeamMessagesPanel';
-import TeamReportPanel from './TeamReportPanel';
+import TeamExpensesPanel from './TeamExpensesPanel';
+import TeamMeetingsPanel from './TeamMeetingsPanel';
 
 type AnnouncementAttachmentDraft = {
   uri: string;
@@ -73,9 +73,9 @@ type AnnouncementAttachmentDraft = {
 type TaskFilter = 'all' | 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'overdue';
 
 function normalizeTab(tab?: string, canSeeReport = false): TeamTab {
-  if (tab === 'team' || tab === 'tasks' || tab === 'announcements' || tab === 'messages') return tab;
+  if (tab === 'tasks' || tab === 'announcements' || tab === 'meetings' || tab === 'expenses') return tab;
   if (tab === 'report' && canSeeReport) return 'report';
-  return 'team';
+  return 'tasks';
 }
 
 export default function TeamHubScreen() {
@@ -88,23 +88,28 @@ export default function TeamHubScreen() {
   const isManager = userData?.role === 'agent' || hasFullEmployeeAccess(userData);
   const canSeeReport = isManager;
   const canManageEmployees = userData?.role === 'agent';
-  const currentTab = normalizeTab(params.tab, canSeeReport);
+  const [activeTab, setActiveTab] = useState<TeamTab>(() => normalizeTab(params.tab, canSeeReport));
 
   const [refreshing, setRefreshing] = useState(false);
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [tasks, setTasks] = useState<TeamTask[]>([]);
   const [announcements, setAnnouncements] = useState<TeamAnnouncement[]>([]);
   const [messages, setMessages] = useState<TeamMessage[]>([]);
+  const [meetingsList, setMeetingsList] = useState<TeamMeeting[]>([]);
+  const [expensesList, setExpensesList] = useState<OfficeExpense[]>([]);
   const [membersLoading, setMembersLoading] = useState(true);
   const [tasksLoading, setTasksLoading] = useState(true);
   const [announcementsLoading, setAnnouncementsLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(true);
+  const [meetingsLoading, setMeetingsLoading] = useState(true);
+  const [expensesLoading, setExpensesLoading] = useState(true);
   const [membersError, setMembersError] = useState<string | null>(null);
   const [tasksError, setTasksError] = useState<string | null>(null);
   const [announcementsError, setAnnouncementsError] = useState<string | null>(null);
   const [messagesError, setMessagesError] = useState<string | null>(null);
+  const [meetingsError, setMeetingsError] = useState<string | null>(null);
+  const [expensesError, setExpensesError] = useState<string | null>(null);
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('all');
-  const [reportRange, setReportRange] = useState<TeamReportRange>('this_week');
 
   const [employeeModalVisible, setEmployeeModalVisible] = useState(false);
   const [employeeSubmitting, setEmployeeSubmitting] = useState(false);
@@ -129,28 +134,20 @@ export default function TeamHubScreen() {
   const [sendToAll, setSendToAll] = useState(true);
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
   const [announcementAttachment, setAnnouncementAttachment] = useState<AnnouncementAttachmentDraft | null>(null);
-  const [messageDraft, setMessageDraft] = useState('');
-  const [messageSubmitting, setMessageSubmitting] = useState(false);
-  const [reportPayload, setReportPayload] = useState<TeamReportPayload | null>(null);
-  const [reportLoading, setReportLoading] = useState(false);
-  const [reportError, setReportError] = useState<string | null>(null);
 
   const announcementRecipients = useMemo(() => members, [members]);
-  const summary = useMemo(() => ({
-    memberCount: members.length,
-    openTasks: tasks.filter((task) => ['pending', 'in_progress'].includes(task.status)).length,
-    unreadAnnouncements: announcements.filter((item) => !item.viewer_is_read).length,
-  }), [announcements, members.length, tasks]);
-  const reportHasData = useMemo(() => {
-    if (!reportPayload) {
-      return false;
-    }
-
-    return Object.values(reportPayload.sections).some((section) =>
-      section.bars.some((bar) => bar.value > 0)
-    );
-  }, [reportPayload]);
-
+  const summary = useMemo(() => {
+    const today = new Date().toDateString();
+    return {
+      memberCount: members.length,
+      openTasks: tasks.filter((task) => ['pending', 'in_progress'].includes(task.status)).length,
+      unreadAnnouncements: announcements.filter((item) => !item.viewer_is_read).length,
+      todayMeetings: meetingsList.filter((m) => {
+        if (m.status !== 'scheduled') return false;
+        try { return new Date(m.scheduled_at).toDateString() === today; } catch { return false; }
+      }).length,
+    };
+  }, [announcements, members.length, tasks, meetingsList]);
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
       if (taskFilter === 'all') return true;
@@ -211,19 +208,31 @@ export default function TeamHubScreen() {
     }
   }, []);
 
-  const loadTeamReport = useCallback(async () => {
+  const loadMeetings = useCallback(async () => {
     try {
-      setReportLoading(true);
-      setReportError(null);
-      setReportPayload((current) => (current?.range === reportRange ? current : null));
-      const nextPayload = await getTeamReport(reportRange);
-      setReportPayload(nextPayload);
+      setMeetingsLoading(true);
+      setMeetingsError(null);
+      const response = await listMeetings();
+      setMeetingsList(response.meetings || []);
     } catch (error: any) {
-      setReportError(error.message || 'Rapor verileri yuklenemedi.');
+      setMeetingsError(error.message || 'Toplantılar yüklenemedi.');
     } finally {
-      setReportLoading(false);
+      setMeetingsLoading(false);
     }
-  }, [reportRange]);
+  }, []);
+
+  const loadExpenses = useCallback(async () => {
+    try {
+      setExpensesLoading(true);
+      setExpensesError(null);
+      const response = await listExpenses();
+      setExpensesList(response.expenses || []);
+    } catch (error: any) {
+      setExpensesError(error.message || 'Harcamalar yüklenemedi.');
+    } finally {
+      setExpensesLoading(false);
+    }
+  }, []);
 
   const loadHubData = useCallback(async () => {
     await Promise.allSettled([
@@ -231,8 +240,10 @@ export default function TeamHubScreen() {
       loadTasks(),
       loadAnnouncements(),
       loadMessages(),
+      loadMeetings(),
+      loadExpenses(),
     ]);
-  }, [loadAnnouncements, loadMembers, loadMessages, loadTasks]);
+  }, [loadAnnouncements, loadMembers, loadMessages, loadTasks, loadMeetings, loadExpenses]);
 
   useFocusEffect(
     useCallback(() => {
@@ -248,23 +259,10 @@ export default function TeamHubScreen() {
       setTasksLoading(false);
       setAnnouncementsLoading(false);
       setMessagesLoading(false);
-      setReportLoading(false);
+      setMeetingsLoading(false);
+      setExpensesLoading(false);
     }
   }, [userData?.id, userLoading]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!userLoading && userData?.id && canSeeReport && currentTab === 'report') {
-        loadTeamReport();
-      }
-    }, [canSeeReport, currentTab, loadTeamReport, userData?.id, userLoading])
-  );
-
-  useEffect(() => {
-    if (params.tab === 'report' && !canSeeReport) {
-      router.replace('/agent/team?tab=team' as never);
-    }
-  }, [canSeeReport, params.tab]);
 
   useEffect(() => {
     if (params.openTaskId && typeof params.openTaskId === 'string') {
@@ -295,14 +293,14 @@ export default function TeamHubScreen() {
     loadTask();
   }, [selectedTaskId]);
 
-  const openTab = (tab: TeamTab) => router.replace(`/agent/team?tab=${tab}` as never);
+  useEffect(() => {
+    if (params.tab) setActiveTab(normalizeTab(params.tab, canSeeReport));
+  }, [params.tab]);
+
+  const openTab = (tab: TeamTab) => setActiveTab(tab);
   const onRefresh = () => {
     setRefreshing(true);
-    const requests: Promise<unknown>[] = [loadHubData()];
-    if (canSeeReport && currentTab === 'report') {
-      requests.push(loadTeamReport());
-    }
-    void Promise.allSettled(requests).finally(() => setRefreshing(false));
+    void loadHubData().finally(() => setRefreshing(false));
   };
 
   const resetEmployeeForm = () => {
@@ -328,7 +326,7 @@ export default function TeamHubScreen() {
     setTaskActionNote('');
     setTaskActionPhotos([]);
     if (params.openTaskId) {
-      router.replace(`/agent/team?tab=${currentTab}` as never);
+      router.replace(`/agent/team?tab=${activeTab}` as never);
     }
   };
 
@@ -496,23 +494,6 @@ export default function TeamHubScreen() {
     }
   };
 
-  const submitMessage = async () => {
-    if (!messageDraft.trim()) {
-      Alert.alert('Bilgi', tr.team.messages.sendEmpty);
-      return;
-    }
-
-    try {
-      setMessageSubmitting(true);
-      const response = await createTeamMessage({ body: messageDraft.trim() });
-      setMessages((current) => [...current, response.message]);
-      setMessageDraft('');
-    } catch (error: any) {
-      Alert.alert('Hata', error.message || tr.team.messages.sendFailed);
-    } finally {
-      setMessageSubmitting(false);
-    }
-  };
 
   const pickTaskPhotos = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -559,9 +540,7 @@ export default function TeamHubScreen() {
     }
   };
 
-  const visibleTabs: TeamTab[] = canSeeReport
-    ? ['team', 'tasks', 'announcements', 'messages', 'report']
-    : ['team', 'tasks', 'announcements', 'messages'];
+  const visibleTabs: TeamTab[] = ['tasks', 'announcements', 'meetings', 'expenses'];
 
   const renderSectionStateCard = ({
     icon,
@@ -604,139 +583,120 @@ export default function TeamHubScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingTop: 16 + insets.top }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
       >
+        {/* ── Header ── */}
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>Ekibim</Text>
-            <Text style={styles.headerSubtitle}>
-              {isManager
-                ? 'Ofis ekibini, görev akışını ve duyuruları aynı merkezden yönetin.'
-                : 'Rosteri, size atanan görevleri ve duyuruları buradan takip edin.'}
-            </Text>
           </View>
+          <TouchableOpacity
+            style={styles.msgIconBtn}
+            onPress={() => router.push('/agent/team-messages' as never)}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="chat-bubble-outline" size={22} color={theme.colors.primary} />
+            {messages.length > 0 && (
+              <View style={styles.msgBadge} />
+            )}
+          </TouchableOpacity>
         </View>
 
+        {/* ── Hero card (compact) ── */}
         <View style={styles.heroCard}>
           <View style={styles.heroTop}>
-            <View>
-              <Text style={styles.heroEyebrow}>Ofis Merkezi</Text>
-              <Text style={styles.heroTitle}>Takım nabzı tek yerde</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.heroButton}
-              onPress={() => openTab(canSeeReport ? 'report' : 'tasks')}
-              activeOpacity={0.85}
-            >
-              <MaterialIcons name={canSeeReport ? 'bar-chart' : 'task'} size={18} color={theme.colors.primary} />
-              <Text style={styles.heroButtonText}>{canSeeReport ? 'Rapor' : 'Görevler'}</Text>
-            </TouchableOpacity>
+            <Text style={styles.heroEyebrow}>Ofis Merkezi</Text>
+            <Text style={styles.heroTitle}>Takım nabzı tek yerde</Text>
           </View>
 
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryValue}>{summary.memberCount}</Text>
-              <Text style={styles.summaryLabel}>Ofis Kullanici</Text>
+          {/* Compact inline stats */}
+          <View style={styles.compactStatsRow}>
+            <View style={styles.compactStat}>
+              <MaterialIcons name="group" size={14} color={theme.colors.textMuted} />
+              <Text style={styles.compactStatText}>{summary.memberCount} üye</Text>
             </View>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryValue}>{summary.openTasks}</Text>
-              <Text style={styles.summaryLabel}>Açık Görev</Text>
+            <View style={styles.statDot} />
+            <View style={styles.compactStat}>
+              <MaterialIcons name="task-alt" size={14} color={theme.colors.textMuted} />
+              <Text style={styles.compactStatText}>{summary.openTasks} açık görev</Text>
             </View>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryValue}>{summary.unreadAnnouncements}</Text>
-              <Text style={styles.summaryLabel}>Okunmayan</Text>
+            <View style={styles.statDot} />
+            <View style={styles.compactStat}>
+              <MaterialIcons name="notifications-none" size={14} color={theme.colors.textMuted} />
+              <Text style={styles.compactStatText}>{summary.unreadAnnouncements} okunmayan</Text>
             </View>
+          </View>
+
+          {/* Context hints — only shown when relevant */}
+          <View style={styles.hintsList}>
+            {summary.todayMeetings > 0 && (
+              <View style={styles.hintRow}>
+                <View style={[styles.hintDot, { backgroundColor: theme.colors.primary }]} />
+                <Text style={styles.hintText}>
+                  Bugün <Text style={styles.hintBold}>{summary.todayMeetings} toplantı</Text> planlandı
+                </Text>
+              </View>
+            )}
+            {summary.openTasks > 0 && (
+              <View style={styles.hintRow}>
+                <View style={[styles.hintDot, { backgroundColor: theme.colors.warning }]} />
+                <Text style={styles.hintText}>
+                  <Text style={styles.hintBold}>{summary.openTasks} görev</Text> tamamlanmayı bekliyor
+                </Text>
+              </View>
+            )}
+            {summary.unreadAnnouncements > 0 && (
+              <View style={styles.hintRow}>
+                <View style={[styles.hintDot, { backgroundColor: theme.colors.error }]} />
+                <Text style={styles.hintText}>
+                  <Text style={styles.hintBold}>{summary.unreadAnnouncements} duyuru</Text> okunmadı
+                </Text>
+              </View>
+            )}
+            {summary.todayMeetings === 0 && summary.openTasks === 0 && summary.unreadAnnouncements === 0 && (
+              <View style={styles.hintRow}>
+                <View style={[styles.hintDot, { backgroundColor: theme.colors.success }]} />
+                <Text style={styles.hintText}>Bugün her şey yolunda</Text>
+              </View>
+            )}
           </View>
         </View>
 
-        <View style={styles.tabBar}>
-          {visibleTabs.map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tabChip, currentTab === tab && styles.tabChipActive]}
-              onPress={() => openTab(tab)}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.tabChipText, currentTab === tab && styles.tabChipTextActive]}>
-                {TEAM_TAB_LABELS[tab]}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* ── Tab bar (horizontal scroll, icon + label) ── */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabScrollContent}
+          style={styles.tabScrollView}
+        >
+          {visibleTabs.map((tab) => {
+            const active = activeTab === tab;
+            const tabIcon: Record<string, keyof typeof MaterialIcons.glyphMap> = {
+              tasks: 'task-alt',
+              announcements: 'campaign',
+              meetings: 'event',
+              expenses: 'receipt-long',
+            };
+            return (
+              <TouchableOpacity
+                key={tab}
+                style={[styles.tabItem, active && styles.tabItemActive]}
+                onPress={() => openTab(tab)}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons
+                  name={tabIcon[tab] ?? 'circle'}
+                  size={20}
+                  color={active ? theme.colors.primary : theme.colors.textMuted}
+                />
+                <Text style={[styles.tabItemText, active && styles.tabItemTextActive]}>
+                  {TEAM_TAB_LABELS[tab]}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
-        {currentTab === 'team' && (
-          <View style={styles.sectionStack}>
-            <View style={styles.sectionHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.sectionTitle}>Ofis Rosteri</Text>
-                <Text style={styles.sectionSubtitle}>Ofis sahibi ve aynı ofise bağlı çalışan kullanıcılar.</Text>
-              </View>
-              {canManageEmployees && (
-                <TouchableOpacity style={styles.primaryAction} onPress={() => setEmployeeModalVisible(true)}>
-                  <MaterialIcons name="person-add" size={18} color={theme.colors.textInverse} />
-                  <Text style={styles.primaryActionText}>Çalışan Ekle</Text>
-                </TouchableOpacity>
-              )}
-            </View>
 
-            {membersError && members.length > 0 && (
-              <View style={styles.inlineWarning}>
-                <MaterialIcons name="error-outline" size={18} color={theme.colors.warningText} />
-                <Text style={styles.inlineWarningText}>Son roster yenilemesi basarisiz oldu. Mevcut veriler gosteriliyor.</Text>
-              </View>
-            )}
-
-            {membersLoading && members.length === 0 ? (
-              renderSectionStateCard({
-                icon: 'groups',
-                title: 'Rosteri hazirlaniyor',
-                description: 'Ofis uyeleri yukleniyor.',
-              })
-            ) : membersError && members.length === 0 ? (
-              renderSectionStateCard({
-                icon: 'groups',
-                title: 'Rosteri yukleyemedik',
-                description: membersError,
-                actionLabel: 'Tekrar dene',
-                onAction: loadMembers,
-              })
-            ) : members.length === 0 ? (
-              renderSectionStateCard({
-                icon: 'groups',
-                title: 'Çalışan bulunamadı',
-                description: canManageEmployees
-                  ? 'Bu ofiste henüz çalışan yok. Yeni bir çalışan ekleyebilirsiniz.'
-                  : 'Bu ofiste henüz roster verisi görünmüyor.',
-              })
-            ) : (
-              members.map((member) => (
-                <TouchableOpacity
-                  key={member.id}
-                  style={styles.memberCard}
-                  onPress={() => isManager && router.push(`/agent/team-member?id=${member.id}` as never)}
-                  activeOpacity={isManager ? 0.85 : 1}
-                  disabled={!isManager}
-                >
-                  <View style={styles.memberAvatar}>
-                    <Text style={styles.memberAvatarText}>{(member.full_name || '?').slice(0, 2).toUpperCase()}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.memberName}>{member.full_name}</Text>
-                    <Text style={styles.memberMeta}>{member.email || 'E-posta yok'}</Text>
-                    <Text style={styles.memberMeta}>
-                      {member.member_type === 'owner'
-                        ? 'Patron'
-                        : member.employee_access_level === 'full'
-                        ? 'Tam Yetki'
-                        : 'Sinirli Yetki'}
-                    </Text>
-                  </View>
-                  {isManager && <MaterialIcons name="chevron-right" size={22} color={theme.colors.textMuted} />}
-                </TouchableOpacity>
-              ))
-            )}
-          </View>
-        )}
-
-        {currentTab === 'tasks' && (
+        {activeTab === 'tasks' && (
           <View style={styles.sectionStack}>
             <View style={styles.sectionHeader}>
               <View style={{ flex: 1 }}>
@@ -815,7 +775,7 @@ export default function TeamHubScreen() {
           </View>
         )}
 
-        {currentTab === 'announcements' && (
+        {activeTab === 'announcements' && (
           <View style={styles.sectionStack}>
             <View style={styles.sectionHeader}>
               <View style={{ flex: 1 }}>
@@ -897,63 +857,27 @@ export default function TeamHubScreen() {
           </View>
         )}
 
-        {currentTab === 'messages' && (
-          <TeamMessagesPanel
-            messages={messages}
-            loading={messagesLoading}
-            error={messagesError}
-            draft={messageDraft}
-            submitting={messageSubmitting}
-            currentUserId={userData?.id}
-            onChangeDraft={setMessageDraft}
-            onRetry={() => {
-              void loadMessages();
-            }}
-            onSend={() => {
-              void submitMessage();
-            }}
+        {activeTab === 'meetings' && (
+          <TeamMeetingsPanel
+            meetings={meetingsList}
+            loading={meetingsLoading}
+            error={meetingsError}
+            isManager={isManager}
+            onRefresh={() => void loadMeetings()}
           />
         )}
 
-        {currentTab === 'report' && canSeeReport && (
-          <View style={styles.sectionStack}>
-            <View>
-              <Text style={styles.sectionTitle}>Rapor</Text>
-              <Text style={styles.sectionSubtitle}>Görev, duyuru ve bakım istatistikleri seçilen aralığa göre hesaplanır.</Text>
-            </View>
-            {reportLoading && reportPayload && (
-              <View style={styles.inlineWarning}>
-                <ActivityIndicator size="small" color={theme.colors.warningText} />
-                <Text style={styles.inlineWarningText}>Rapor verileri yenileniyor.</Text>
-              </View>
-            )}
-            {reportError ? (
-              renderSectionStateCard({
-                icon: 'error-outline',
-                title: 'Rapor yuklenemedi',
-                description: reportError,
-                actionLabel: 'Tekrar dene',
-                onAction: () => {
-                  void loadTeamReport();
-                },
-              })
-            ) : reportLoading && !reportPayload ? (
-              renderSectionStateCard({
-                icon: 'bar-chart',
-                title: 'Rapor yukleniyor',
-                description: 'Guncel ekip ve operasyon verileri hesaplaniyor.',
-              })
-            ) : reportHasData ? (
-              <TeamReportPanel payload={reportPayload!} range={reportRange} onRangeChange={setReportRange} />
-            ) : (
-              renderSectionStateCard({
-                icon: 'bar-chart',
-                title: 'Henüz veri yok',
-                description: 'Seçilen aralıkta raporlanacak görev, duyuru veya bakım kaydı bulunmuyor.',
-              })
-            )}
-          </View>
+        {activeTab === 'expenses' && (
+          <TeamExpensesPanel
+            expenses={expensesList}
+            loading={expensesLoading}
+            error={expensesError}
+            currentUserId={userData?.id}
+            isAgent={userData?.role === 'agent'}
+            onRefresh={() => void loadExpenses()}
+          />
         )}
+
       </ScrollView>
 
       <Modal visible={employeeModalVisible} transparent animationType="slide" onRequestClose={closeEmployeeModal}>
@@ -1190,20 +1114,35 @@ const useStyles = createThemedStyles((theme) =>
     container: { flex: 1, backgroundColor: theme.colors.background },
     loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.background },
     scrollContent: { padding: 16, paddingBottom: 120, gap: 14 },
-    header: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+    header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     headerTitle: { fontSize: 28, fontWeight: '800', color: theme.colors.textPrimary },
-    headerSubtitle: { fontSize: 13, color: theme.colors.textSecondary, marginTop: 6, lineHeight: 18 },
-    heroCard: { backgroundColor: theme.colors.surface, borderRadius: 24, padding: 18, borderWidth: 1, borderColor: theme.colors.border, ...theme.shadows.md },
-    heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 14 },
-    heroEyebrow: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', color: theme.colors.textMuted },
-    heroTitle: { fontSize: 22, fontWeight: '800', color: theme.colors.textPrimary, marginTop: 8 },
+    msgIconBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.primaryLight },
+    msgBadge: { position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.primary },
+    heroCard: { backgroundColor: theme.colors.surface, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: theme.colors.border, ...theme.shadows.sm },
+    heroTop: { marginBottom: 12 },
+    heroEyebrow: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, color: theme.colors.textMuted },
+    heroTitle: { fontSize: 18, fontWeight: '800', color: theme.colors.textPrimary, marginTop: 4 },
     heroButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 999, backgroundColor: theme.colors.primaryLight, borderWidth: 1, borderColor: theme.colors.primary },
     heroButtonText: { fontSize: 12, fontWeight: '700', color: theme.colors.primary },
+    compactStatsRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 12 },
+    compactStat: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    compactStatText: { fontSize: 12, color: theme.colors.textMuted, fontWeight: '600' },
+    statDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: theme.colors.border },
+    hintsList: { gap: 6, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 10 },
+    hintRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    hintDot: { width: 7, height: 7, borderRadius: 4 },
+    hintText: { fontSize: 13, color: theme.colors.textSecondary, lineHeight: 18 },
+    hintBold: { fontWeight: '700', color: theme.colors.textPrimary },
     summaryRow: { flexDirection: 'row', gap: 10 },
     summaryCard: { flex: 1, borderRadius: 18, paddingVertical: 14, alignItems: 'center', backgroundColor: theme.colors.surface2, borderWidth: 1, borderColor: theme.colors.border },
     summaryValue: { fontSize: 22, fontWeight: '800', color: theme.colors.textPrimary },
     summaryLabel: { fontSize: 11, fontWeight: '700', color: theme.colors.textMuted, marginTop: 4, textTransform: 'uppercase', textAlign: 'center' },
-    tabBar: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    tabScrollView: { backgroundColor: theme.colors.surface, borderRadius: 18, borderWidth: 1, borderColor: theme.colors.border, flexGrow: 0 },
+    tabScrollContent: { gap: 0 },
+    tabItem: { alignItems: 'center', justifyContent: 'center', paddingVertical: 13, paddingHorizontal: 18, gap: 4, borderRightWidth: 1, borderRightColor: theme.colors.border },
+    tabItemActive: { backgroundColor: theme.colors.primaryLight },
+    tabItemText: { fontSize: 11, fontWeight: '700', color: theme.colors.textMuted },
+    tabItemTextActive: { color: theme.colors.primary },
     tabChip: { paddingHorizontal: 16, paddingVertical: 11, borderRadius: 999, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border },
     tabChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
     tabChipText: { fontSize: 13, fontWeight: '700', color: theme.colors.textSecondary },

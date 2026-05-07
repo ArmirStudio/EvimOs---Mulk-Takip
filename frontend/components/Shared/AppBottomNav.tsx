@@ -338,7 +338,7 @@ const useStyles = createThemedStyles((theme) =>
       left: 0,
       right: 0,
       bottom: 0,
-      paddingHorizontal: 12,
+      paddingHorizontal: 0,
       zIndex: 100,
     },
     blurContainer: {

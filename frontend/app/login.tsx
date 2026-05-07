@@ -16,7 +16,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import BrandLockup from '../components/Shared/BrandLockup';
-import { brand, publicSurface } from '../constants/brand';
+import { brand, getPublicSurface } from '../constants/brand';
 import { createThemedStyles, useAppTheme } from './theme';
 import { tr } from './translations';
 import { resolveLoginIdentifier } from '../services/appApi';
@@ -285,8 +285,9 @@ export default function LoginScreen() {
   );
 }
 
-const useStyles = createThemedStyles((theme) =>
-  StyleSheet.create({
+const useStyles = createThemedStyles((theme) => {
+  const publicSurface = getPublicSurface(theme);
+  return StyleSheet.create({
     safeArea: {
       flex: 1,
       backgroundColor: theme.colors.background,
@@ -470,5 +471,5 @@ const useStyles = createThemedStyles((theme) =>
       textAlign: 'center',
       fontWeight: theme.fontWeight.medium,
     },
-  }),
-);
+  });
+});

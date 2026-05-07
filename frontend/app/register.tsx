@@ -19,7 +19,7 @@ import KeyboardAwareScrollView, {
   focusAndScrollToInput,
   scrollToInput,
 } from '../components/Shared/KeyboardAwareScrollView';
-import { publicSurface } from '../constants/brand';
+import { getPublicSurface } from '../constants/brand';
 import {
   lookupPublicInviteCode,
   registerPublicInviteCode,
@@ -115,7 +115,13 @@ export default function RegisterScreen() {
       }
       const userData = await buildUserDataForSession(data.user.id);
       await persistUserData(userData);
-      router.replace(userData.role === 'landlord' ? '/landlord/dashboard' : '/tenant/dashboard');
+      if (userData.role === 'landlord') {
+        router.replace('/landlord/dashboard');
+      } else if (userData.role === 'employee') {
+        router.replace('/agent/dashboard' as never);
+      } else {
+        router.replace('/tenant/dashboard');
+      }
     } catch (error: any) {
       showMessage(error?.detail || error?.message || 'Kayıt tamamlanamadı. Bilgileri kontrol edin.');
     } finally {
@@ -222,7 +228,7 @@ export default function RegisterScreen() {
               <View style={styles.inviteSummary}>
                 <Text style={styles.inviteSummaryTitle}>{invite.office_name}</Text>
                 <Text style={styles.inviteSummaryText}>
-                  {invite.role === 'landlord' ? 'Ev sahibi' : 'Kiracı'} daveti bulundu. Aşağıdaki bilgileri kendi gerçek bilgilerinizle tamamlayın.
+                  {invite.role === 'landlord' ? 'Ev sahibi' : invite.role === 'employee' ? 'Ofis çalışanı' : 'Kiracı'} daveti bulundu. Aşağıdaki bilgileri kendi gerçek bilgilerinizle tamamlayın.
                 </Text>
               </View>
             ) : null}
@@ -361,8 +367,9 @@ export default function RegisterScreen() {
   );
 }
 
-const useStyles = createThemedStyles((theme) =>
-  StyleSheet.create({
+const useStyles = createThemedStyles((theme) => {
+  const publicSurface = getPublicSurface(theme);
+  return StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: theme.colors.background },
     keyboardView: { flex: 1 },
     contentContainer: {
@@ -561,5 +568,5 @@ const useStyles = createThemedStyles((theme) =>
       textAlign: 'center',
       fontWeight: theme.fontWeight.medium,
     },
-  }),
-);
+  });
+});

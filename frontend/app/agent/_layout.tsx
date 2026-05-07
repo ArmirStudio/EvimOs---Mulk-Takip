@@ -37,6 +37,7 @@ export default function AgentLayout() {
       <Stack.Screen name="invite" options={getWizardScreenOptions(theme)} />
       <Stack.Screen name="pending-invites" options={getMainSurfaceScreenOptions(theme)} />
       <Stack.Screen name="pending-invite-detail" options={getDetailScreenOptions(theme)} />
+      <Stack.Screen name="team-messages" options={getDetailScreenOptions(theme)} />
     </Stack>
   );
 }

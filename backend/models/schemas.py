@@ -30,7 +30,7 @@ class ResolveLoginIdentifierRequest(BaseModel):
     identifier: str
 
 class CreateInviteRequest(BaseModel):
-    role: Literal["landlord", "tenant"]
+    role: Literal["landlord", "tenant", "employee"]
     contact_label: str
     prefill_full_name: Optional[str] = None
     prefill_phone: Optional[str] = None
@@ -51,6 +51,7 @@ class RegisterInviteCodeRequest(RegisterInviteRequest):
 class UpdatePendingInviteRequest(BaseModel):
     action: Literal["approve", "update_label"]
     contact_label: Optional[str] = None
+    employee_access_level: Optional[Literal["full", "limited"]] = None
 
 class CreateUserRequest(BaseModel):
     email: str
@@ -203,6 +204,38 @@ class CreateAnnouncementRequest(BaseModel):
 
 class CreateTeamMessageRequest(BaseModel):
     body: str
+    reply_to_id: Optional[str] = None
+
+
+class CreateTeamMeetingRequest(BaseModel):
+    title: str
+    description: Optional[str] = None
+    scheduled_at: str
+    notes: Optional[str] = None
+
+
+class UpdateTeamMeetingRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    scheduled_at: Optional[str] = None
+    notes: Optional[str] = None
+
+
+EXPENSE_CATEGORIES = Literal["kira", "fatura", "ulasim", "yemek", "malzeme", "diger"]
+
+
+class CreateExpenseRequest(BaseModel):
+    amount: float
+    category: EXPENSE_CATEGORIES
+    description: Optional[str] = None
+    expense_date: str
+    receipt_url: Optional[str] = None
+
+
+class UpdateExpenseRequest(BaseModel):
+    description: Optional[str] = None
+    expense_date: Optional[str] = None
+    receipt_url: Optional[str] = None
 
 
 class CreateAgencyRequest(BaseModel):

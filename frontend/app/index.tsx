@@ -14,7 +14,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import BrandLockup from '../components/Shared/BrandLockup';
-import { brand, landingHighlights, landingProof, landingRoles, publicSurface } from '../constants/brand';
+import { brand, landingHighlights, landingProof, landingRoles, getPublicSurface } from '../constants/brand';
 import { createThemedStyles, useAppTheme } from './theme';
 import { isSupabaseConfigured, supabaseConfigurationErrorMessage } from '../services/supabase';
 
@@ -245,8 +245,9 @@ function RoleCard({
   );
 }
 
-const useStyles = createThemedStyles((theme) =>
-  StyleSheet.create({
+const useStyles = createThemedStyles((theme) => {
+  const publicSurface = getPublicSurface(theme);
+  return StyleSheet.create({
     safeArea: {
       flex: 1,
       backgroundColor: theme.colors.background,
@@ -562,5 +563,5 @@ const useStyles = createThemedStyles((theme) =>
       textAlign: 'center',
       paddingHorizontal: theme.spacing.sm,
     },
-  }),
-);
+  });
+});
