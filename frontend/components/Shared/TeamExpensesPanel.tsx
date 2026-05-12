@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  LayoutAnimation,
   Modal,
   Platform,
   Pressable,
@@ -11,8 +12,13 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  UIManager,
   View,
 } from 'react-native';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -295,7 +301,15 @@ export default function TeamExpensesPanel({ expenses, loading, error, currentUse
               <React.Fragment key={expense.id}>
                 <TouchableOpacity
                   style={styles.expenseCard}
-                  onPress={() => setExpandedId(expanded ? null : expense.id)}
+                  onPress={() => {
+                    LayoutAnimation.configureNext({
+                      duration: 280,
+                      create: { type: 'easeInEaseOut', property: 'opacity' },
+                      update: { type: 'spring', springDamping: 0.75 },
+                      delete: { type: 'easeInEaseOut', property: 'opacity' },
+                    });
+                    setExpandedId(expanded ? null : expense.id);
+                  }}
                   activeOpacity={0.85}
                 >
                   <View style={[styles.catDot, { backgroundColor: color }]} />

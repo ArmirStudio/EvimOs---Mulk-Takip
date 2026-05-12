@@ -18,6 +18,7 @@ import { tr } from '../../app/translations';
 import { listUsers } from '../../services/appApi';
 import { getUserData, type UserData } from '../../hooks/useUserData';
 import { createThemedStyles, useAppTheme } from '../../app/theme';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { canManageOfficeRecords, canViewOfficeDirectory } from '../../utils/employeeAccess';
 
 type UserRole = 'tenant' | 'landlord';
@@ -185,30 +186,32 @@ export default function UserListScreen({ role }: Props) {
     });
   }, [getContactLabel, searchQuery, users]);
 
-  const renderUser = ({ item }: { item: any }) => {
+  const renderUser = ({ item, index }: { item: any; index: number }) => {
     const contactLabel = getContactLabel(item);
     return (
-      <TouchableOpacity
-        style={styles.userCard}
-        activeOpacity={0.85}
-        onPress={() => router.push(`/agent/contact-detail?id=${item.id}` as any)}
-      >
-        <View style={styles.userIcon}>
-          <Ionicons name="person" size={24} color={theme.colors.primary} />
-        </View>
-        <View style={styles.userInfo}>
-          <Text style={styles.userName}>{item.full_name}</Text>
-          {!!contactLabel && <Text style={styles.contactLabel}>Takma ad: {contactLabel}</Text>}
-          <Text style={styles.userUsername}>{item.email}</Text>
-          {item.phone && (
-            <View style={styles.phoneRow}>
-              <Ionicons name="call-outline" size={14} color={theme.colors.textMuted} />
-              <Text style={styles.userPhone}>{item.phone}</Text>
-            </View>
-          )}
-        </View>
-        <Ionicons name="chevron-forward" size={20} color={theme.colors.textMuted} />
-      </TouchableOpacity>
+      <Animated.View entering={FadeInDown.delay(index * 45).duration(350).springify()}>
+        <TouchableOpacity
+          style={styles.userCard}
+          activeOpacity={0.85}
+          onPress={() => router.push(`/agent/contact-detail?id=${item.id}` as any)}
+        >
+          <View style={styles.userIcon}>
+            <Ionicons name="person" size={24} color={theme.colors.primary} />
+          </View>
+          <View style={styles.userInfo}>
+            <Text style={styles.userName}>{item.full_name}</Text>
+            {!!contactLabel && <Text style={styles.contactLabel}>Takma ad: {contactLabel}</Text>}
+            <Text style={styles.userUsername}>{item.email}</Text>
+            {item.phone && (
+              <View style={styles.phoneRow}>
+                <Ionicons name="call-outline" size={14} color={theme.colors.textMuted} />
+                <Text style={styles.userPhone}>{item.phone}</Text>
+              </View>
+            )}
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={theme.colors.textMuted} />
+        </TouchableOpacity>
+      </Animated.View>
     );
   };
 

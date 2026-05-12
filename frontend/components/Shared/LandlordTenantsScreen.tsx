@@ -13,6 +13,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { createThemedStyles, useAppTheme } from '../../app/theme';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useUserData } from '../../hooks/useUserData';
 import { supabase } from '../../services/supabase';
 import AnimatedScreen from './AnimatedScreen';
@@ -145,29 +146,30 @@ export default function LandlordTenantsScreen() {
                 <Text style={styles.emptySubtitle}>Kiracı atanmış mülkler burada listelenecek.</Text>
               </View>
             ) : (
-              rows.map((item) => (
-                <TouchableOpacity
-                  key={`${item.property_id}-${item.tenant?.id}`}
-                  style={styles.card}
-                  activeOpacity={0.86}
-                  onPress={() => router.push(`/landlord/property-detail?id=${item.property_id}` as any)}
-                >
-                  <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>
-                      {(item.tenant?.full_name || '?').slice(0, 2).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1, gap: 4 }}>
-                    <Text style={styles.name}>{item.tenant?.full_name || 'Kiracı'}</Text>
-                    <Text style={styles.meta}>{item.tenant?.email || 'E-posta yok'}</Text>
-                    <Text style={styles.meta}>{item.tenant?.phone || 'Telefon yok'}</Text>
-                    <Text style={styles.propertyLabel}>{item.property_label}</Text>
-                    <Text style={styles.contractText}>
-                      Sozlesme: {formatDate(item.contract_start)} - {formatDate(item.contract_end)}
-                    </Text>
-                  </View>
-                  <MaterialIcons name="chevron-right" size={22} color={theme.colors.textMuted} />
-                </TouchableOpacity>
+              rows.map((item, i) => (
+                <Animated.View key={`${item.property_id}-${item.tenant?.id}`} entering={FadeInDown.delay(i * 60).duration(380).springify()}>
+                  <TouchableOpacity
+                    style={styles.card}
+                    activeOpacity={0.86}
+                    onPress={() => router.push(`/landlord/property-detail?id=${item.property_id}` as any)}
+                  >
+                    <View style={styles.avatar}>
+                      <Text style={styles.avatarText}>
+                        {(item.tenant?.full_name || '?').slice(0, 2).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1, gap: 4 }}>
+                      <Text style={styles.name}>{item.tenant?.full_name || 'Kiracı'}</Text>
+                      <Text style={styles.meta}>{item.tenant?.email || 'E-posta yok'}</Text>
+                      <Text style={styles.meta}>{item.tenant?.phone || 'Telefon yok'}</Text>
+                      <Text style={styles.propertyLabel}>{item.property_label}</Text>
+                      <Text style={styles.contractText}>
+                        Sozlesme: {formatDate(item.contract_start)} - {formatDate(item.contract_end)}
+                      </Text>
+                    </View>
+                    <MaterialIcons name="chevron-right" size={22} color={theme.colors.textMuted} />
+                  </TouchableOpacity>
+                </Animated.View>
               ))
             )}
           </ScrollView>

@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { tr } from '../../app/translations';
 import { createThemedStyles, useAppTheme } from '../../app/theme';
@@ -536,7 +537,7 @@ export default function MaintenanceScreen() {
     }
   };
 
-  const renderReceipt = ({ item }: { item: Receipt }) => {
+  const renderReceipt = ({ item, index }: { item: Receipt; index: number }) => {
     const badge = receiptStatusStyle(theme, item.status);
     const dateStr = new Date(item.created_at).toLocaleDateString('tr-TR', {
       month: 'long',
@@ -544,25 +545,27 @@ export default function MaintenanceScreen() {
     });
 
     return (
-      <TouchableOpacity style={s.archiveCard} activeOpacity={0.82} onPress={() => setSelectedReceiptId(item.id)}>
-        <View style={s.archiveIconBox}>
-          <MaterialIcons name="receipt-long" size={22} color={theme.colors.primary} />
-        </View>
-        <View style={s.archiveCardContent}>
-          <View style={s.archiveCardRow}>
-            <Text style={s.archiveCardTitle} numberOfLines={1}>{receiptTypeLabel(item.receipt_type)} Dekontu</Text>
-            <View style={[s.archiveBadge, { backgroundColor: badge.bg }]}>
-              <Text style={[s.archiveBadgeText, { color: badge.text }]}>{receiptStatusLabel(item.status)}</Text>
+      <Animated.View entering={FadeInDown.delay(index * 45).duration(360).springify()}>
+        <TouchableOpacity style={s.archiveCard} activeOpacity={0.82} onPress={() => setSelectedReceiptId(item.id)}>
+          <View style={s.archiveIconBox}>
+            <MaterialIcons name="receipt-long" size={22} color={theme.colors.primary} />
+          </View>
+          <View style={s.archiveCardContent}>
+            <View style={s.archiveCardRow}>
+              <Text style={s.archiveCardTitle} numberOfLines={1}>{receiptTypeLabel(item.receipt_type)} Dekontu</Text>
+              <View style={[s.archiveBadge, { backgroundColor: badge.bg }]}>
+                <Text style={[s.archiveBadgeText, { color: badge.text }]}>{receiptStatusLabel(item.status)}</Text>
+              </View>
             </View>
+            <Text style={s.archiveCardMeta} numberOfLines={1}>{item.property_address || tr.receipts.unknownProperty}</Text>
+            <View style={s.archiveCardRow}>
+              {item.amount != null ? <Text style={s.archiveAmount}>{formatCurrency(Number(item.amount))}</Text> : <View />}
+              <Text style={s.archiveCardDate}>{dateStr}</Text>
+            </View>
+            {!!item.uploader_name && <Text style={s.archiveCardMeta} numberOfLines={1}>Yükleyen: {item.uploader_name}</Text>}
           </View>
-          <Text style={s.archiveCardMeta} numberOfLines={1}>{item.property_address || tr.receipts.unknownProperty}</Text>
-          <View style={s.archiveCardRow}>
-            {item.amount != null ? <Text style={s.archiveAmount}>{formatCurrency(Number(item.amount))}</Text> : <View />}
-            <Text style={s.archiveCardDate}>{dateStr}</Text>
-          </View>
-          {!!item.uploader_name && <Text style={s.archiveCardMeta} numberOfLines={1}>Yükleyen: {item.uploader_name}</Text>}
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </Animated.View>
     );
   };
 
@@ -594,7 +597,7 @@ export default function MaintenanceScreen() {
     </View>
   );
 
-  const renderRequest = ({ item }: { item: any }) => {
+  const renderRequest = ({ item, index }: { item: any; index: number }) => {
     const awaitingTenantApproval =
       item.status === 'completed' && !!item.property_tenant_id && !item.tenant_approved_at;
     const statusMeta = getMaintenanceStatusMeta(item.status, { awaitingTenantApproval });
@@ -605,74 +608,76 @@ export default function MaintenanceScreen() {
     const nextAction = getMaintenanceNextAction(item, userRole);
 
     return (
-      <TouchableOpacity
-        style={s.card}
-        activeOpacity={0.9}
-        onPress={() => setSelectedMaintenanceId(item.id)}
-      >
-        <View style={s.cardAccentWrap}>
-          <View style={[s.cardAccent, { backgroundColor: statusTone.accentColor }]} />
-        </View>
+      <Animated.View entering={FadeInDown.delay(index * 55).duration(380).springify()}>
+        <TouchableOpacity
+          style={s.card}
+          activeOpacity={0.9}
+          onPress={() => setSelectedMaintenanceId(item.id)}
+        >
+          <View style={s.cardAccentWrap}>
+            <View style={[s.cardAccent, { backgroundColor: statusTone.accentColor }]} />
+          </View>
 
-        <View style={s.cardContent}>
-          <View style={s.cardHeader}>
-            <View style={s.cardIconBg}>
-              <MaterialIcons name={statusMeta.icon as any} size={20} color={statusTone.accentColor} />
+          <View style={s.cardContent}>
+            <View style={s.cardHeader}>
+              <View style={s.cardIconBg}>
+                <MaterialIcons name={statusMeta.icon as any} size={20} color={statusTone.accentColor} />
+              </View>
+              <View style={s.cardHeaderMeta}>
+                <Text style={s.cardTitle} numberOfLines={1}>
+                  {item.title || 'Bakim Talebi'}
+                </Text>
+                <Text style={s.cardAddress} numberOfLines={1}>
+                  {item.property_address}
+                </Text>
+              </View>
             </View>
-            <View style={s.cardHeaderMeta}>
-              <Text style={s.cardTitle} numberOfLines={1}>
-                {item.title || 'Bakim Talebi'}
+
+            {!!item.description && (
+              <Text style={s.cardDescription} numberOfLines={2}>
+                {item.description}
               </Text>
-              <Text style={s.cardAddress} numberOfLines={1}>
-                {item.property_address}
-              </Text>
+            )}
+
+            <View style={s.badgesRow}>
+              <View
+                style={[
+                  s.badge,
+                  { backgroundColor: statusTone.backgroundColor, borderColor: statusTone.borderColor },
+                ]}
+              >
+                <Text style={[s.badgeText, { color: statusTone.textColor }]}>{statusMeta.label}</Text>
+              </View>
+              <View
+                style={[
+                  s.badge,
+                  { backgroundColor: priorityTone.backgroundColor, borderColor: priorityTone.borderColor },
+                ]}
+              >
+                <Text style={[s.badgeText, { color: priorityTone.textColor }]}>{priorityMeta.label}</Text>
+              </View>
+            </View>
+
+            <View style={s.nextActionCard}>
+              <Text style={s.nextActionLabel}>{tr.tenant.nextStep}</Text>
+              <Text style={s.nextActionValue}>{nextAction}</Text>
+            </View>
+
+            <View style={s.cardFooter}>
+              <View style={s.footerItem}>
+                <MaterialIcons name="schedule" size={13} color={theme.colors.textMuted} />
+                <Text style={s.cardDate}>{formatMaintenanceDate(item.updated_at || item.created_at, 'relative')}</Text>
+              </View>
+              <View style={s.footerItem}>
+                <MaterialIcons name="photo-library" size={13} color={theme.colors.textMuted} />
+                <Text style={s.cardDate}>{photoCount} foto</Text>
+              </View>
+              <View style={{ flex: 1 }} />
+              <MaterialIcons name="chevron-right" size={20} color={theme.colors.textMuted} />
             </View>
           </View>
-
-          {!!item.description && (
-            <Text style={s.cardDescription} numberOfLines={2}>
-              {item.description}
-            </Text>
-          )}
-
-          <View style={s.badgesRow}>
-            <View
-              style={[
-                s.badge,
-                { backgroundColor: statusTone.backgroundColor, borderColor: statusTone.borderColor },
-              ]}
-            >
-              <Text style={[s.badgeText, { color: statusTone.textColor }]}>{statusMeta.label}</Text>
-            </View>
-            <View
-              style={[
-                s.badge,
-                { backgroundColor: priorityTone.backgroundColor, borderColor: priorityTone.borderColor },
-              ]}
-            >
-              <Text style={[s.badgeText, { color: priorityTone.textColor }]}>{priorityMeta.label}</Text>
-            </View>
-          </View>
-
-          <View style={s.nextActionCard}>
-            <Text style={s.nextActionLabel}>{tr.tenant.nextStep}</Text>
-            <Text style={s.nextActionValue}>{nextAction}</Text>
-          </View>
-
-          <View style={s.cardFooter}>
-            <View style={s.footerItem}>
-              <MaterialIcons name="schedule" size={13} color={theme.colors.textMuted} />
-              <Text style={s.cardDate}>{formatMaintenanceDate(item.updated_at || item.created_at, 'relative')}</Text>
-            </View>
-            <View style={s.footerItem}>
-              <MaterialIcons name="photo-library" size={13} color={theme.colors.textMuted} />
-              <Text style={s.cardDate}>{photoCount} foto</Text>
-            </View>
-            <View style={{ flex: 1 }} />
-            <MaterialIcons name="chevron-right" size={20} color={theme.colors.textMuted} />
-          </View>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </Animated.View>
     );
   };
 

@@ -19,6 +19,7 @@ import { useUserData } from '../../hooks/useUserData';
 import { listReceipts } from '../../services/appApi';
 import { formatCurrency } from '../../utils/propertyHelpers';
 import { canReviewReceipt } from '../../utils/employeeAccess';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import AnimatedScreen from './AnimatedScreen';
 import { useGlobalBottomNavInset } from './AppBottomNav';
 
@@ -138,9 +139,10 @@ export default function ReceiptsScreen() {
     </View>
   );
 
-  const renderReceipt = ({ item }: { item: any }) => {
+  const renderReceipt = ({ item, index }: { item: any; index: number }) => {
     const badge = (badgeStyles as any)[item.status] || badgeStyles.pending;
     return (
+      <Animated.View entering={FadeInDown.delay(index * 50).duration(360).springify()}>
       <TouchableOpacity
         style={styles.receiptCard}
         activeOpacity={0.88}
@@ -193,6 +195,7 @@ export default function ReceiptsScreen() {
           <MaterialIcons name="chevron-right" size={18} color={theme.colors.textMuted} />
         </View>
       </TouchableOpacity>
+      </Animated.View>
     );
   };
 

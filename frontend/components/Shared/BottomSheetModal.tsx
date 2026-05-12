@@ -1,13 +1,20 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Dimensions,
   Modal,
   Pressable,
   StyleSheet,
   View,
-  Animated as RNAnimated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+  Easing,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { createThemedStyles, useAppTheme } from '../../app/theme';
 
@@ -21,6 +28,9 @@ type BottomSheetModalProps = {
 
 const WINDOW_HEIGHT = Dimensions.get('window').height;
 
+const SPRING_IN  = { damping: 28, stiffness: 280, mass: 0.85 } as const;
+const TIMING_OUT = { duration: 240, easing: Easing.in(Easing.cubic) } as const;
+
 export default function BottomSheetModal({
   visible,
   onClose,
@@ -31,53 +41,64 @@ export default function BottomSheetModal({
   const theme = useAppTheme();
   const styles = useStyles();
   const insets = useSafeAreaInsets();
-  const slideAnim = useRef(new RNAnimated.Value(WINDOW_HEIGHT)).current;
+
+  // Keep sheet mounted until exit animation finishes
+  const [mounted, setMounted] = useState(visible);
+
+  const translateY      = useSharedValue(WINDOW_HEIGHT);
+  const backdropOpacity = useSharedValue(0);
 
   const sheetHeight = useMemo(() => {
-    const availableHeight = WINDOW_HEIGHT - Math.max(insets.top, 20) - topOffset;
-    return Math.max(WINDOW_HEIGHT * 0.72, Math.min(WINDOW_HEIGHT * maxHeightRatio, availableHeight));
+    const available = WINDOW_HEIGHT - Math.max(insets.top, 20) - topOffset;
+    return Math.max(WINDOW_HEIGHT * 0.72, Math.min(WINDOW_HEIGHT * maxHeightRatio, available));
   }, [insets.top, maxHeightRatio, topOffset]);
 
   useEffect(() => {
     if (visible) {
-      RNAnimated.spring(slideAnim, {
-        toValue: 0,
-        useNativeDriver: true,
-        bounciness: 0,
-        speed: 16,
-      }).start();
-    } else {
-      RNAnimated.timing(slideAnim, {
-        toValue: WINDOW_HEIGHT,
-        duration: 220,
-        useNativeDriver: true,
-      }).start();
+      setMounted(true);
     }
-  }, [slideAnim, visible]);
+  }, [visible]);
 
-  if (!visible) {
-    return null;
-  }
+  useEffect(() => {
+    if (!mounted) return;
+
+    if (visible) {
+      backdropOpacity.value = withTiming(1, { duration: 280, easing: Easing.out(Easing.cubic) });
+      translateY.value = withSpring(0, SPRING_IN);
+    } else {
+      backdropOpacity.value = withTiming(0, { duration: 220 });
+      translateY.value = withTiming(WINDOW_HEIGHT, TIMING_OUT, (finished) => {
+        if (finished) runOnJS(setMounted)(false);
+      });
+    }
+  }, [visible, mounted, translateY, backdropOpacity]);
+
+  const animatedSheet    = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.value }] }));
+  const animatedBackdrop = useAnimatedStyle(() => ({ opacity: backdropOpacity.value }));
+
+  if (!mounted) return null;
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <View style={styles.root}>
-        <Pressable style={styles.backdrop} onPress={onClose} />
+        <Animated.View style={[styles.backdrop, animatedBackdrop]}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
+        </Animated.View>
 
-        <RNAnimated.View
+        <Animated.View
           style={[
             styles.sheet,
             {
               height: sheetHeight,
               paddingBottom: Math.max(insets.bottom, 12),
-              transform: [{ translateY: slideAnim }],
               backgroundColor: theme.colors.background,
             },
+            animatedSheet,
           ]}
         >
           <View style={styles.handle} />
           <View style={styles.content}>{children}</View>
-        </RNAnimated.View>
+        </Animated.View>
       </View>
     </Modal>
   );

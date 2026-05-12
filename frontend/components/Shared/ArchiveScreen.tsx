@@ -1,18 +1,26 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
   FlatList,
   Linking,
   Modal,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  Animated as RNAnimated,
 } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  FadeInDown,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -74,44 +82,38 @@ function BottomSheetModal({
   children: React.ReactNode;
 }) {
   const bsStyles = useBottomSheetStyles();
-  const slideAnim = useRef(new RNAnimated.Value(SCREEN_HEIGHT)).current;
+  const [mounted, setMounted] = useState(visible);
+  const translateY      = useSharedValue(SCREEN_HEIGHT);
+  const backdropOpacity = useSharedValue(0);
 
   useEffect(() => {
-    if (visible) {
-      RNAnimated.spring(slideAnim, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 65,
-        friction: 11,
-      }).start();
-    } else {
-      RNAnimated.timing(slideAnim, {
-        toValue: SCREEN_HEIGHT,
-        duration: 250,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [slideAnim, visible]);
+    if (visible) setMounted(true);
+  }, [visible]);
 
-  if (!visible) {
-    return null;
-  }
+  useEffect(() => {
+    if (!mounted) return;
+    if (visible) {
+      backdropOpacity.value = withTiming(1, { duration: 260, easing: Easing.out(Easing.cubic) });
+      translateY.value = withSpring(0, { damping: 28, stiffness: 280, mass: 0.85 });
+    } else {
+      backdropOpacity.value = withTiming(0, { duration: 200 });
+      translateY.value = withTiming(SCREEN_HEIGHT, { duration: 240, easing: Easing.in(Easing.cubic) }, (done) => {
+        if (done) runOnJS(setMounted)(false);
+      });
+    }
+  }, [visible, mounted, translateY, backdropOpacity]);
+
+  const animatedSheet    = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.value }] }));
+  const animatedBackdrop = useAnimatedStyle(() => ({ opacity: backdropOpacity.value }));
+
+  if (!mounted) return null;
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={onClose}
-      statusBarTranslucent
-    >
-      <TouchableOpacity style={bsStyles.overlay} activeOpacity={1} onPress={onClose} />
-      <Animated.View
-        style={[
-          bsStyles.sheet,
-          { transform: [{ translateY: slideAnim }] },
-        ]}
-      >
+    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
+      <Animated.View style={[bsStyles.overlay, animatedBackdrop]}>
+        <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
+      </Animated.View>
+      <Animated.View style={[bsStyles.sheet, animatedSheet]}>
         <View style={bsStyles.handle} />
         {children}
       </Animated.View>
