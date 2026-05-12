@@ -494,33 +494,48 @@ export default function EditPropertyScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          automaticallyAdjustKeyboardInsets
         >
 
           {/* ── Fotoğraflar ────────────────────────────────────────────── */}
           <View style={styles.card}>
             <SectionHeader icon="photo-library" title="Mülk Fotoğrafları" subtitle={`${allPhotos.length}/10 fotoğraf`} />
+            {/* Cover photo hero */}
+            {allPhotos.length > 0 && (
+              <View style={styles.coverHero}>
+                <Image source={{ uri: allPhotos[0] }} style={styles.coverHeroImg} />
+                <View style={styles.coverBadge}>
+                  <Text style={styles.coverBadgeText}>Kapak</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.photoRemove}
+                  onPress={() => existingImages.length > 0 ? removeExistingImage(0) : removeNewPhoto(0)}
+                >
+                  <MaterialIcons name="close" size={11} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            )}
+            {/* Remaining photos grid */}
             <View style={styles.photoGrid}>
-              {existingImages.map((uri, i) => (
-                <View key={`ex-${i}`} style={styles.photoCell}>
+              {existingImages.slice(allPhotos.length > 0 ? 1 : 0).map((uri, i) => (
+                <View key={`ex-${i + 1}`} style={styles.photoCell}>
                   <Image source={{ uri }} style={styles.photoCellImg} />
-                  {i === 0 && (
-                    <View style={styles.coverBadge}>
-                      <Text style={styles.coverBadgeText}>Kapak</Text>
-                    </View>
-                  )}
-                  <TouchableOpacity style={styles.photoRemove} onPress={() => removeExistingImage(i)}>
+                  <TouchableOpacity style={styles.photoRemove} onPress={() => removeExistingImage(i + 1)}>
                     <MaterialIcons name="close" size={11} color="#fff" />
                   </TouchableOpacity>
                 </View>
               ))}
-              {newPhotos.map((uri, i) => (
-                <View key={`new-${i}`} style={styles.photoCell}>
-                  <Image source={{ uri }} style={styles.photoCellImg} />
-                  <TouchableOpacity style={styles.photoRemove} onPress={() => removeNewPhoto(i)}>
-                    <MaterialIcons name="close" size={11} color="#fff" />
-                  </TouchableOpacity>
-                </View>
-              ))}
+              {(allPhotos.length > 0 ? newPhotos : newPhotos.slice(1)).map((uri, i) => {
+                const offset = allPhotos.length > 0 && existingImages.length === 0 ? 1 : 0;
+                return (
+                  <View key={`new-${i}`} style={styles.photoCell}>
+                    <Image source={{ uri }} style={styles.photoCellImg} />
+                    <TouchableOpacity style={styles.photoRemove} onPress={() => removeNewPhoto(i + offset)}>
+                      <MaterialIcons name="close" size={11} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
               {canAddMore && (
                 <TouchableOpacity style={styles.photoAddCell} onPress={pickNewPhotos} activeOpacity={0.75}>
                   <MaterialIcons name="add-a-photo" size={22} color={theme.colors.primary} />
@@ -1087,24 +1102,24 @@ const useStyles = createThemedStyles((theme) => StyleSheet.create({
     ...theme.shadows.sm,
   },
 
-  formContent: { padding: 14, paddingBottom: 32, gap: 12 },
+  formContent: { padding: 16, paddingBottom: 32, gap: 16 },
 
   // Card
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: theme.colors.divider,
     padding: 16,
-    ...theme.shadows.sm,
+    ...theme.shadows.md,
   },
 
   // Section Header
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
   sectionIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.primaryLight,
@@ -1148,7 +1163,7 @@ const useStyles = createThemedStyles((theme) => StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 9,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: theme.colors.border,
     backgroundColor: '#FFF',
@@ -1158,7 +1173,7 @@ const useStyles = createThemedStyles((theme) => StyleSheet.create({
     backgroundColor: theme.colors.primaryLight,
   },
   iconChipText: { fontSize: 13, fontWeight: '600', color: theme.colors.textSecondary },
-  iconChipTextActive: { color: theme.colors.primary },
+  iconChipTextActive: { color: theme.colors.primary, fontWeight: '700' },
 
   // Segment control (2 tabs)
   segmentControl: {
@@ -1259,19 +1274,28 @@ const useStyles = createThemedStyles((theme) => StyleSheet.create({
   },
 
   // Photos
+  coverHero: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+    marginBottom: 10,
+  },
+  coverHeroImg: { width: '100%', height: '100%' },
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   photoCell: { width: 80, height: 80, borderRadius: 10, overflow: 'hidden', position: 'relative' },
   photoCellImg: { width: '100%', height: '100%' },
   coverBadge: {
     position: 'absolute',
-    bottom: 4,
-    left: 4,
+    bottom: 8,
+    left: 8,
     backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
-  coverBadgeText: { fontSize: 9, fontWeight: '700', color: '#fff' },
+  coverBadgeText: { fontSize: 10, fontWeight: '700', color: '#fff' },
   photoRemove: {
     position: 'absolute',
     top: 4,
@@ -1378,11 +1402,11 @@ const useStyles = createThemedStyles((theme) => StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     paddingHorizontal: 16,
-    paddingTop: 10,
+    paddingTop: 12,
     paddingBottom: 20,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
+    borderTopWidth: 0,
+    backgroundColor: 'rgba(253,249,243,0.92)',
+    ...theme.shadows.md,
   },
   deleteBtn: {
     flex: 1,

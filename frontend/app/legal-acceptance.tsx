@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { createThemedStyles, useAppTheme } from './theme';
 import { acceptLegalTerms } from '../services/appApi';
@@ -27,17 +27,18 @@ function routeForRole(role?: string | null) {
 export default function LegalAcceptanceScreen() {
   const theme = useAppTheme();
   const styles = useStyles();
-  const { userData, loading } = useUserData();
-  const [accepted, setAccepted] = useState(false);
+  const { userData } = useUserData();
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [kvkkOpen, setKvkkOpen] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedKvkk, setAcceptedKvkk] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const displayName = useMemo(
-    () => userData?.full_name || userData?.email || 'Kullanici',
-    [userData?.email, userData?.full_name]
-  );
+  const canContinue = acceptedTerms && acceptedKvkk && !submitting;
 
   const handleAccept = async () => {
-    if (!accepted || submitting) return;
+    if (!canContinue) return;
+    const isFirstLoginAgent = userData?.role === 'agent' && userData?.first_login === true;
     setSubmitting(true);
     try {
       const response = await acceptLegalTerms();
@@ -45,10 +46,13 @@ export default function LegalAcceptanceScreen() {
         ...(userData || {}),
         ...(response.user || {}),
         terms_accepted_at: response.user?.terms_accepted_at,
-        first_login: false,
       } as UserData;
       await persistUserData(nextUserData);
-      router.replace(routeForRole(nextUserData.role) as never);
+      if (isFirstLoginAgent) {
+        router.replace('/agent/force-password-change' as never);
+      } else {
+        router.replace(routeForRole(nextUserData.role) as never);
+      }
     } catch (error: any) {
       Alert.alert('Hata', error?.detail || error?.message || 'Kabul kaydedilemedi.');
     } finally {
@@ -61,73 +65,186 @@ export default function LegalAcceptanceScreen() {
     router.replace('/login' as never);
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <ActivityIndicator color={theme.colors.primary} />
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background} />
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.header}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+
+        {/* Header */}
+        <View style={styles.headerBox}>
           <View style={styles.iconBox}>
-            <Ionicons name="document-text-outline" size={28} color={theme.colors.primary} />
+            <MaterialIcons name="gavel" size={30} color={theme.colors.primary} />
           </View>
-          <Text style={styles.title}>Kullanim sartlari ve gizlilik</Text>
+          <View style={styles.brandRow}>
+            <Text style={styles.brandName}>Armir Studio</Text>
+            <View style={styles.brandDot} />
+            <Text style={styles.appName}>EvimOs — Mülk Yönetim</Text>
+          </View>
+          <Text style={styles.title}>Kullanım Koşulları ve Gizlilik</Text>
           <Text style={styles.subtitle}>
-            {displayName}, devam etmek icin uygulama kosullarini okuyup kabul etmeniz gerekir.
+            Uygulamaya devam etmek için aşağıdaki koşulları okuyup her ikisini de onaylamanız gerekmektedir.
           </Text>
         </View>
 
+        {/* Kullanım Koşulları */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Kullanim Sartlari</Text>
-          <Text style={styles.bodyText}>
-            EvimOs, mulk, kira, dekont, bakim ve ekip kayitlarini rolunuze gore yonetmenizi saglar.
-            Hesabinizla yapilan islemler size veya yetkili oldugunuz ofise baglanir. Yanlis, eksik
-            veya size ait olmayan kayit olusturmamak sizin sorumlulugunuzdadir.
-          </Text>
-          <Text style={styles.sectionTitle}>Gizlilik</Text>
-          <Text style={styles.bodyText}>
-            Kisisel bilgiler, iletisim bilgileri, mulk kayitlari, belgeler ve operasyon hareketleri
-            yalnizca uygulama islevleri, yetki kontrolu ve destek surecleri icin kullanilir. Yetkiniz
-            olmayan kayitlara erisim kisitlanir.
-          </Text>
+          <TouchableOpacity
+            style={styles.sectionHeader}
+            onPress={() => setTermsOpen(v => !v)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.sectionIconBox}>
+              <MaterialIcons name="description" size={20} color={theme.colors.primary} />
+            </View>
+            <Text style={styles.sectionTitle}>Kullanım Koşulları</Text>
+            <MaterialIcons
+              name={termsOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+              size={22}
+              color={theme.colors.textMuted}
+            />
+          </TouchableOpacity>
+          {termsOpen && (
+            <View style={styles.sectionBody}>
+              <Text style={styles.bodyText}>
+                <Text style={styles.boldText}>1. Genel Hükümler{'\n'}</Text>
+                Bu uygulama, Armir Studio tarafından geliştirilen EvimOs — Mülk Yönetim platformudur. Uygulamayı
+                kullanarak aşağıdaki koşulları kabul etmiş sayılırsınız.{'\n\n'}
+
+                <Text style={styles.boldText}>2. Hesap Sorumluluğu{'\n'}</Text>
+                Hesabınızla gerçekleştirilen tüm işlemler size aittir. Hesap bilgilerinizi üçüncü şahıslarla
+                paylaşmamanız, şifrenizi düzenli olarak güncellemeniz ve yetkisiz erişim durumunda Armir Studio'yu
+                derhal bilgilendirmeniz gerekmektedir.{'\n\n'}
+
+                <Text style={styles.boldText}>3. Platform Kullanımı{'\n'}</Text>
+                EvimOs; mülk, kira, dekont, bakım ve ekip kayıtlarını rolünüze göre yönetmenizi sağlar. Yanlış,
+                eksik veya size ait olmayan kayıt oluşturmamak sizin sorumluluğunuzdadır. Platform yalnızca yasal
+                amaçlarla kullanılabilir.{'\n\n'}
+
+                <Text style={styles.boldText}>4. Fikri Mülkiyet{'\n'}</Text>
+                Uygulama içeriği, tasarımı, yazılımı ve tüm bileşenleri Armir Studio'nun fikri mülkiyetidir.
+                İzinsiz kopyalanması, dağıtılması veya değiştirilmesi yasaktır.{'\n\n'}
+
+                <Text style={styles.boldText}>5. Hizmet Değişiklikleri{'\n'}</Text>
+                Armir Studio, önceden haber vermeksizin platformda değişiklik yapma, hizmetleri askıya alma veya
+                sonlandırma hakkını saklı tutar. Kullanım koşullarında yapılacak değişiklikler uygulama içinden
+                bildirilecektir.{'\n\n'}
+
+                <Text style={styles.boldText}>6. Sorumluluk Sınırlaması{'\n'}</Text>
+                Platform "olduğu gibi" sunulmaktadır. Armir Studio, teknik aksaklıklar, veri kaybı veya platform
+                kullanımından doğan dolaylı zararlardan sorumlu tutulamaz.
+              </Text>
+            </View>
+          )}
         </View>
 
+        {/* KVKK */}
+        <View style={styles.card}>
+          <TouchableOpacity
+            style={styles.sectionHeader}
+            onPress={() => setKvkkOpen(v => !v)}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.sectionIconBox, styles.kvkkIconBox]}>
+              <MaterialIcons name="security" size={20} color={theme.colors.copper} />
+            </View>
+            <Text style={styles.sectionTitle}>KVKK / Gizlilik Politikası</Text>
+            <MaterialIcons
+              name={kvkkOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+              size={22}
+              color={theme.colors.textMuted}
+            />
+          </TouchableOpacity>
+          {kvkkOpen && (
+            <View style={styles.sectionBody}>
+              <Text style={styles.bodyText}>
+                <Text style={styles.boldText}>Veri Sorumlusu{'\n'}</Text>
+                6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") kapsamında veri sorumlusu sıfatıyla
+                hareket eden Armir Studio, kişisel verilerinizi aşağıda açıklanan amaçlar doğrultusunda işlemektedir.{'\n\n'}
+
+                <Text style={styles.boldText}>İşlenen Kişisel Veriler{'\n'}</Text>
+                • Ad, soyad, e-posta adresi, telefon numarası{'\n'}
+                • Konum bilgileri (şehir, ilçe){'\n'}
+                • Mülk ve kira kayıtları, dekontlar{'\n'}
+                • Uygulama içi işlem geçmişi ve operasyon hareketleri{'\n'}
+                • Profil fotoğrafı ve iletişim tercihleri{'\n\n'}
+
+                <Text style={styles.boldText}>Veri İşleme Amaçları{'\n'}</Text>
+                Kişisel verileriniz; uygulama işlevlerinin yerine getirilmesi, yetki kontrolü, müşteri desteği,
+                yasal yükümlülüklerin karşılanması ve hizmet kalitesinin iyileştirilmesi amacıyla işlenmektedir.{'\n\n'}
+
+                <Text style={styles.boldText}>Veri Güvenliği{'\n'}</Text>
+                Verileriniz, endüstri standardı şifreleme ve güvenlik önlemleriyle korunmaktadır. Yetkisiz erişime
+                karşı teknik ve idari tedbirler alınmaktadır. Verileriniz üçüncü taraflarla yalnızca yasal
+                zorunluluk veya açık rızanız bulunduğu durumlarda paylaşılmaktadır.{'\n\n'}
+
+                <Text style={styles.boldText}>Haklarınız (KVKK Madde 11){'\n'}</Text>
+                Kişisel verilerinize ilişkin; bilgi talep etme, düzeltme isteme, silme veya yok etme talep etme,
+                işlemeye itiraz etme ve zararın giderilmesini talep etme haklarına sahipsiniz. Bu haklarınızı
+                kullanmak için destek@armirstudio.com adresine başvurabilirsiniz.{'\n\n'}
+
+                <Text style={styles.boldText}>Veri Saklama Süresi{'\n'}</Text>
+                Kişisel verileriniz, ilgili mevzuatta öngörülen süreler ve hizmet ilişkisinin devamı süresince
+                saklanmaktadır. İlişkinin sona ermesinin ardından yasal yükümlülükler kapsamında belirlenen
+                süreler dışında silinmektedir.
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Checkboxes */}
         <TouchableOpacity
-          style={styles.checkRow}
-          onPress={() => setAccepted((value) => !value)}
+          style={[styles.checkRow, acceptedTerms && styles.checkRowActive]}
+          onPress={() => setAcceptedTerms(v => !v)}
           activeOpacity={0.85}
           accessibilityRole="checkbox"
-          accessibilityState={{ checked: accepted }}
+          accessibilityState={{ checked: acceptedTerms }}
         >
           <Ionicons
-            name={accepted ? 'checkbox' : 'square-outline'}
+            name={acceptedTerms ? 'checkbox' : 'square-outline'}
             size={24}
-            color={accepted ? theme.colors.primary : theme.colors.textMuted}
+            color={acceptedTerms ? theme.colors.primary : theme.colors.textMuted}
           />
-          <Text style={styles.checkText}>Okudum, anladim ve kabul ediyorum.</Text>
+          <Text style={styles.checkText}>
+            Kullanım Koşullarını okudum, anladım ve kabul ediyorum.
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.primaryButton, (!accepted || submitting) && styles.disabled]}
+          style={[styles.checkRow, acceptedKvkk && styles.checkRowActive]}
+          onPress={() => setAcceptedKvkk(v => !v)}
+          activeOpacity={0.85}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: acceptedKvkk }}
+        >
+          <Ionicons
+            name={acceptedKvkk ? 'checkbox' : 'square-outline'}
+            size={24}
+            color={acceptedKvkk ? theme.colors.copper : theme.colors.textMuted}
+          />
+          <Text style={styles.checkText}>
+            KVKK kapsamında kişisel verilerimin işlenmesine onay veriyorum.
+          </Text>
+        </TouchableOpacity>
+
+        {/* Continue button */}
+        <TouchableOpacity
+          style={[styles.primaryButton, !canContinue && styles.disabled]}
           onPress={handleAccept}
-          disabled={!accepted || submitting}
+          disabled={!canContinue}
           activeOpacity={0.88}
         >
           {submitting ? (
             <ActivityIndicator color={theme.colors.textInverse} />
           ) : (
-            <Text style={styles.primaryButtonText}>Devam Et</Text>
+            <>
+              <Text style={styles.primaryButtonText}>Devam Et</Text>
+              <MaterialIcons name="arrow-forward" size={20} color={theme.colors.textInverse} style={{ marginLeft: 8 }} />
+            </>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.secondaryButton} onPress={handleSignOut} activeOpacity={0.8}>
-          <Text style={styles.secondaryButtonText}>Cikis yap</Text>
+          <Text style={styles.secondaryButtonText}>Çıkış Yap</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -137,50 +254,153 @@ export default function LegalAcceptanceScreen() {
 const useStyles = createThemedStyles((theme) =>
   StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: theme.colors.background },
-    scroll: { flexGrow: 1, padding: theme.spacing.lg, paddingBottom: theme.spacing.xxxl, gap: theme.spacing.lg },
-    header: { gap: theme.spacing.sm },
+    scroll: {
+      flexGrow: 1,
+      padding: 20,
+      paddingBottom: 40,
+      gap: 14,
+    },
+    headerBox: {
+      gap: 8,
+      paddingBottom: 4,
+    },
     iconBox: {
-      width: 56,
-      height: 56,
-      borderRadius: theme.borderRadius.lg,
+      width: 60,
+      height: 60,
+      borderRadius: 18,
+      backgroundColor: theme.colors.primaryLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 4,
+    },
+    brandRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    brandName: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: theme.colors.primary,
+      letterSpacing: 0.5,
+    },
+    brandDot: {
+      width: 3,
+      height: 3,
+      borderRadius: 1.5,
+      backgroundColor: theme.colors.copper,
+    },
+    appName: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.colors.textSecondary,
+    },
+    title: {
+      fontSize: 22,
+      fontWeight: '800',
+      color: theme.colors.textPrimary,
+      letterSpacing: -0.3,
+    },
+    subtitle: {
+      fontSize: 14,
+      lineHeight: 21,
+      color: theme.colors.textSecondary,
+    },
+    card: {
+      backgroundColor: '#FFFFFF',
+      borderWidth: 1,
+      borderColor: theme.colors.divider,
+      borderRadius: 18,
+      overflow: 'hidden',
+      ...theme.shadows.sm,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      gap: 12,
+    },
+    sectionIconBox: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
       backgroundColor: theme.colors.primaryLight,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    title: { fontSize: theme.fontSize.xxl, fontWeight: theme.fontWeight.bold, color: theme.colors.textPrimary },
-    subtitle: { fontSize: theme.fontSize.base, lineHeight: 22, color: theme.colors.textSecondary },
-    card: {
-      backgroundColor: theme.colors.surface,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      borderRadius: theme.borderRadius.xl,
-      padding: theme.spacing.lg,
-      gap: theme.spacing.md,
+    kvkkIconBox: {
+      backgroundColor: '#FDF4EC',
     },
-    sectionTitle: { fontSize: theme.fontSize.md, fontWeight: theme.fontWeight.bold, color: theme.colors.textPrimary },
-    bodyText: { fontSize: theme.fontSize.sm, lineHeight: 21, color: theme.colors.textSecondary },
+    sectionTitle: {
+      flex: 1,
+      fontSize: 15,
+      fontWeight: '700',
+      color: theme.colors.textPrimary,
+      letterSpacing: 0.1,
+    },
+    sectionBody: {
+      paddingHorizontal: 16,
+      paddingBottom: 16,
+      paddingTop: 2,
+    },
+    bodyText: {
+      fontSize: 13,
+      lineHeight: 21,
+      color: theme.colors.textSecondary,
+    },
+    boldText: {
+      fontWeight: '700',
+      color: theme.colors.textPrimary,
+    },
     checkRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: theme.spacing.md,
-      backgroundColor: theme.colors.surface,
+      gap: 12,
+      backgroundColor: '#FFFFFF',
       borderWidth: 1,
-      borderColor: theme.colors.border,
-      borderRadius: theme.borderRadius.lg,
-      padding: theme.spacing.md,
+      borderColor: theme.colors.divider,
+      borderRadius: 14,
+      padding: 14,
       minHeight: 56,
+      ...theme.shadows.sm,
     },
-    checkText: { flex: 1, fontSize: theme.fontSize.base, color: theme.colors.textPrimary, fontWeight: theme.fontWeight.semibold },
+    checkRowActive: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primaryLight,
+    },
+    checkText: {
+      flex: 1,
+      fontSize: 14,
+      color: theme.colors.textPrimary,
+      fontWeight: '600',
+      lineHeight: 20,
+    },
     primaryButton: {
       minHeight: 56,
-      borderRadius: theme.borderRadius.lg,
+      borderRadius: 16,
       backgroundColor: theme.colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
+      flexDirection: 'row',
+      marginTop: 4,
+      ...theme.shadows.md,
     },
-    primaryButtonText: { color: theme.colors.textInverse, fontSize: theme.fontSize.base, fontWeight: theme.fontWeight.bold },
-    secondaryButton: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
-    secondaryButtonText: { color: theme.colors.textSecondary, fontSize: theme.fontSize.sm, fontWeight: theme.fontWeight.semibold },
-    disabled: { opacity: 0.55 },
+    primaryButtonText: {
+      color: theme.colors.textInverse,
+      fontSize: 16,
+      fontWeight: '700',
+      letterSpacing: 0.2,
+    },
+    secondaryButton: {
+      minHeight: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    secondaryButtonText: {
+      color: theme.colors.textSecondary,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    disabled: { opacity: 0.45 },
   })
 );

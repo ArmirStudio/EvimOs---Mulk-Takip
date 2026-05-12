@@ -110,6 +110,22 @@ function RootNavigator() {
     !userData.terms_accepted_at &&
     pathname !== '/legal-acceptance';
 
+  const needsAgentPasswordChange =
+    !!userData &&
+    userData.role === 'agent' &&
+    userData.first_login === true &&
+    !!userData.terms_accepted_at &&
+    !userData.onboarded_at &&
+    pathname !== '/agent/force-password-change';
+
+  useEffect(() => {
+    if (!needsAgentPasswordChange) return;
+    if (pathname === '/' || pathname === '/login' || pathname === '/register' || pathname === '/set-password' || pathname === '/forgot-password' || pathname === '/legal-acceptance') {
+      return;
+    }
+    router.replace('/agent/force-password-change' as any);
+  }, [needsAgentPasswordChange, pathname, router]);
+
   useEffect(() => {
     const isPendingInviteUser =
       (userData?.role === 'tenant' || userData?.role === 'landlord') && userData.status === 'pending';

@@ -558,6 +558,12 @@ export function acceptLegalTerms() {
   });
 }
 
+export function completeAgentOnboarding() {
+  return apiRequest<{ success: boolean; user: any }>('/users/me/complete-onboarding', {
+    method: 'PATCH',
+  });
+}
+
 export function deleteTeamTask(taskId: string) {
   return apiRequest<{ success: boolean }>(`/team/tasks/${taskId}`, {
     method: 'DELETE',

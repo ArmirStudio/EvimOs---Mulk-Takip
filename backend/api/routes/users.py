@@ -274,6 +274,27 @@ def accept_legal_terms(
         supabase.table("users")
         .update({
             "terms_accepted_at": now,
+            "updated_at": now,
+        })
+        .eq("id", current_user["id"])
+        .execute()
+    )
+    user = result.data[0] if result.data else _get_user_or_404(current_user["id"])
+    return {"success": True, "user": user}
+
+
+@router.patch("/me/complete-onboarding")
+def complete_agent_onboarding(
+    current_user: dict = Depends(get_current_user),
+):
+    if current_user.get("role") != "agent":
+        raise HTTPException(status_code=403, detail="Yalnızca agent hesapları için geçerlidir")
+
+    now = datetime.utcnow().isoformat()
+    result = (
+        supabase.table("users")
+        .update({
+            "onboarded_at": now,
             "first_login": False,
             "updated_at": now,
         })

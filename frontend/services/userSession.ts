@@ -39,6 +39,7 @@ export type UserData = {
   preferred_theme?: BackendThemePreference | null;
   terms_accepted_at?: string | null;
   first_login?: boolean | null;
+  onboarded_at?: string | null;
   effectiveBrand?: EffectiveBrand | null;
 };
 
@@ -70,6 +71,7 @@ type UserBrandRow = {
   preferred_theme?: BackendThemePreference | null;
   terms_accepted_at?: string | null;
   first_login?: boolean | null;
+  onboarded_at?: string | null;
   agencies?: AgencyBrandRow | AgencyBrandRow[] | null;
   invites?: {
     contact_label?: string | null;
@@ -226,6 +228,7 @@ export async function buildUserDataForSession(authId: string) {
       preferred_theme,
       terms_accepted_at,
       first_login,
+      onboarded_at,
       agencies:agency_id (
         name,
         brand_color_primary,
@@ -287,6 +290,7 @@ export async function buildUserDataForSession(authId: string) {
     preferred_theme: ownProfile.preferred_theme || null,
     terms_accepted_at: ownProfile.terms_accepted_at || null,
     first_login: ownProfile.first_login ?? null,
+    onboarded_at: ownProfile.onboarded_at || null,
     effectiveBrand,
   } satisfies UserData;
 }

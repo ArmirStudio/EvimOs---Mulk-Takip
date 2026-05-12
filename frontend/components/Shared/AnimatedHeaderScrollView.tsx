@@ -88,7 +88,7 @@ export default function AnimatedHeaderScrollView({
     };
   });
 
-  const headerBgColor = transparentHeader || glassHeader ? theme.colors.navGlass : theme.colors.background;
+  const headerBgColor = transparentHeader ? 'transparent' : glassHeader ? theme.colors.navGlass : theme.colors.background;
 
   return (
     <>

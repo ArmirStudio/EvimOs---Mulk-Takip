@@ -504,7 +504,7 @@ export default function PropertyDetailScreen() {
 
               {employee && (
                 <TouchableOpacity
-                  style={s.personCard}
+                  style={[s.personCard, s.personCardLast]}
                   activeOpacity={0.85}
                   onPress={() => setContactModal({ full_name: displayName(employee), email: employee.email, phone: employee.phone, roleLabel: 'Sorumlu Çalışan', iconName: 'badge', iconColor: theme.colors.success, bgColor: theme.colors.successLight })}
                 >
@@ -545,11 +545,11 @@ export default function PropertyDetailScreen() {
 
               <View style={s.maintStatRow}>
                 {[
-                  { label: 'Açık', value: maintenanceOverview.open, color: theme.colors.warning },
-                  { label: 'Kritik', value: maintenanceOverview.critical, color: theme.colors.error },
-                  { label: 'Tamamlanan', value: maintenanceOverview.completed, color: theme.colors.success },
+                  { label: 'Açık', value: maintenanceOverview.open, color: theme.colors.warning, bg: theme.colors.warningLight },
+                  { label: 'Kritik', value: maintenanceOverview.critical, color: theme.colors.error, bg: theme.colors.errorLight },
+                  { label: 'Tamamlanan', value: maintenanceOverview.completed, color: theme.colors.success, bg: theme.colors.successLight },
                 ].map(stat => (
-                  <View key={stat.label} style={s.maintStatCard}>
+                  <View key={stat.label} style={[s.maintStatCard, { backgroundColor: stat.bg }]}>
                     <Text style={[s.maintStatValue, { color: stat.color }]}>{stat.value}</Text>
                     <Text style={s.maintStatLabel}>{stat.label}</Text>
                   </View>
@@ -819,9 +819,12 @@ const useStyles = createThemedStyles((theme) => StyleSheet.create({
 
   // Card
   card: {
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.divider,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.divider,
+    padding: 16,
+    ...theme.shadows.sm,
   },
 
   // Section Header
@@ -830,7 +833,7 @@ const useStyles = createThemedStyles((theme) => StyleSheet.create({
     marginBottom: 14,
   },
   sectionIconWrap: {
-    width: 30, height: 30, borderRadius: 8,
+    width: 36, height: 36, borderRadius: 10,
     backgroundColor: theme.colors.primaryLight,
     alignItems: 'center', justifyContent: 'center',
   },
@@ -856,17 +859,19 @@ const useStyles = createThemedStyles((theme) => StyleSheet.create({
   amenityChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: theme.colors.primaryLight,
-    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10,
+    borderWidth: 1, borderColor: theme.colors.primary,
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12,
   },
   amenityChipText: { fontSize: 12, fontWeight: '600', color: theme.colors.primary },
 
   // People
   personCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderRadius: 12, paddingVertical: 10,
-    marginBottom: 8,
+    borderRadius: 12, paddingVertical: 11,
+    borderBottomWidth: 1, borderBottomColor: theme.colors.divider,
   },
-  personCardDashed: { paddingHorizontal: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.primary, backgroundColor: theme.colors.primaryLight },
+  personCardLast: { borderBottomWidth: 0 },
+  personCardDashed: { paddingHorizontal: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.primary, backgroundColor: theme.colors.primaryLight, borderBottomWidth: 0 },
   personAvatar: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
   personInfo: { flex: 1 },
   personRole: { fontSize: 10, fontWeight: '700', color: theme.colors.textMuted, letterSpacing: 0.5 },
@@ -877,11 +882,10 @@ const useStyles = createThemedStyles((theme) => StyleSheet.create({
   maintStatRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
   maintStatCard: {
     flex: 1,
-    borderRadius: 14, paddingVertical: 12, alignItems: 'center',
-    borderWidth: 1, borderColor: theme.colors.divider,
-    backgroundColor: theme.colors.surface,
+    borderRadius: 14, paddingVertical: 14, alignItems: 'center',
+    ...theme.shadows.sm,
   },
-  maintStatValue: { fontSize: 22, fontWeight: '800', color: theme.colors.textPrimary },
+  maintStatValue: { fontSize: 22, fontWeight: '800' },
   maintStatLabel: { fontSize: 11, fontWeight: '700', color: theme.colors.textMuted, textTransform: 'uppercase', marginTop: 4, letterSpacing: 0.4 },
   maintItem: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
@@ -920,20 +924,22 @@ const useStyles = createThemedStyles((theme) => StyleSheet.create({
   stickyBar: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
     flexDirection: 'row', gap: 10,
-    paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24,
+    paddingHorizontal: 16, paddingTop: 10, paddingBottom: 24,
+    backgroundColor: 'rgba(253,249,243,0.95)',
+    ...theme.shadows.md,
   },
   stickyRemoveBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingVertical: 13, paddingHorizontal: 16,
     borderRadius: 14, borderWidth: 1.5, borderColor: theme.colors.error,
-    backgroundColor: theme.colors.errorLight,
+    backgroundColor: 'transparent',
   },
   stickyRemoveBtnText: { fontSize: 14, fontWeight: '700', color: theme.colors.error },
   stickyEditBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 6, paddingVertical: 13,
     borderRadius: 14, backgroundColor: theme.colors.primary,
-    ...theme.shadows.sm,
+    ...theme.shadows.md,
   },
   stickyEditBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 

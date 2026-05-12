@@ -481,6 +481,7 @@ export default function CreatePropertyWizard() {
         contentContainerStyle={styles.step1Content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
       >
         <View style={styles.step1Card}>
           <View style={styles.step1IconWrap}>
@@ -520,6 +521,7 @@ export default function CreatePropertyWizard() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        automaticallyAdjustKeyboardInsets
       >
         {/* Konum */}
         <View style={styles.card}>
@@ -720,6 +722,7 @@ export default function CreatePropertyWizard() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        automaticallyAdjustKeyboardInsets
       >
         <View style={styles.card}>
           <SectionHeader icon="straighten" title="Boyut & Tip" />
@@ -823,6 +826,7 @@ export default function CreatePropertyWizard() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        automaticallyAdjustKeyboardInsets
       >
         {/* ── Ev Sahibi ── */}
         <View style={styles.card}>
