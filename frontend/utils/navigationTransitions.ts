@@ -1,6 +1,6 @@
-import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
-
 import type { AppThemeTokens } from '../app/theme';
+
+type StackNavigationOptions = Record<string, any>;
 
 const MAIN_SURFACE_ROUTES = new Set([
   'dashboard',
@@ -45,7 +45,7 @@ const WIZARD_ROUTES = new Set([
 
 export function getSoftStackBaseOptions(
   theme: AppThemeTokens
-): NativeStackNavigationOptions {
+): StackNavigationOptions {
   return {
     headerShown: false,
     gestureEnabled: true,
@@ -58,14 +58,14 @@ export function getSoftStackBaseOptions(
 
 export function getMainSurfaceScreenOptions(
   theme: AppThemeTokens
-): NativeStackNavigationOptions {
+): StackNavigationOptions {
   return {
     ...getSoftStackBaseOptions(theme),
     animation: 'none',
   };
 }
 
-function createDeepLinkOptions(theme: AppThemeTokens): NativeStackNavigationOptions {
+function createDeepLinkOptions(theme: AppThemeTokens): StackNavigationOptions {
   return {
     ...getSoftStackBaseOptions(theme),
     animation: 'fade_from_bottom',
@@ -74,7 +74,7 @@ function createDeepLinkOptions(theme: AppThemeTokens): NativeStackNavigationOpti
 
 export function getDetailScreenOptions(
   theme: AppThemeTokens
-): NativeStackNavigationOptions {
+): StackNavigationOptions {
   return {
     ...getSoftStackBaseOptions(theme),
     animation: 'slide_from_right',
@@ -83,7 +83,7 @@ export function getDetailScreenOptions(
 
 export function getWizardScreenOptions(
   theme: AppThemeTokens
-): NativeStackNavigationOptions {
+): StackNavigationOptions {
   return {
     ...getSoftStackBaseOptions(theme),
     animation: 'fade_from_bottom',
@@ -93,7 +93,7 @@ export function getWizardScreenOptions(
 export function getRootStackOptions(
   theme: AppThemeTokens,
   routeName?: string | null
-): NativeStackNavigationOptions {
+): StackNavigationOptions {
   if (routeName === 'index') {
     return getMainSurfaceScreenOptions(theme);
   }
@@ -107,7 +107,7 @@ export function getRootStackOptions(
 export function getRoleStackOptions(
   theme: AppThemeTokens,
   routeName?: string | null
-): NativeStackNavigationOptions {
+): StackNavigationOptions {
   if (routeName && MAIN_SURFACE_ROUTES.has(routeName)) {
     return getMainSurfaceScreenOptions(theme);
   }

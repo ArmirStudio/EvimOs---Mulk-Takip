@@ -54,6 +54,19 @@ class UpdatePendingInviteRequest(BaseModel):
     contact_label: Optional[str] = None
     employee_access_level: Optional[Literal["full", "limited"]] = None
 
+
+class LegalAcceptanceRequest(BaseModel):
+    accepted: Literal[True]
+
+
+class AdminDevLinkUserRequest(BaseModel):
+    user_id: str
+    role: Literal["agent", "landlord", "tenant", "employee"]
+    target_agent_id: Optional[str] = None
+    agency_id: Optional[str] = None
+    employee_access_level: Optional[Literal["full", "limited"]] = None
+    status: Literal["pending", "active"] = "active"
+
 class CreateUserRequest(BaseModel):
     email: str
     password: Optional[str] = None

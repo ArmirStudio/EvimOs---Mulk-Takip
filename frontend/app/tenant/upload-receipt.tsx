@@ -17,7 +17,8 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import Animated, { FadeInRight } from 'react-native-reanimated';
-import { uploadFileToSupabaseStorage } from '../../services/supabaseStorage';
+import { prepareUploadAsset } from '../../services/uploadPreparation';
+import { removeFilesFromSupabaseStorage, uploadFileToSupabaseStorage } from '../../services/supabaseStorage';
 import { listProperties, listReceipts, uploadReceipt } from '../../services/appApi';
 import { tr } from '../translations';
 import { createThemedStyles, useAppTheme } from '../theme';
@@ -157,7 +158,6 @@ export default function UploadReceiptScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
-      quality: 0.8,
       base64: false,
     });
     if (!result.canceled && result.assets[0]) {
@@ -186,7 +186,6 @@ export default function UploadReceiptScreen() {
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
-      quality: 0.8,
       base64: false,
     });
     if (!result.canceled && result.assets[0]) {
@@ -291,25 +290,41 @@ export default function UploadReceiptScreen() {
         }
       }
 
-      const ext = getFileExt(document.type, document.name);
-      const objectPath = `${property.id}/${actorId}/${Date.now()}-${Math.floor(Math.random() * 1e6)}.${ext}`;
+      const preparedDocument = await prepareUploadAsset({
+        uri: document.uri,
+        name: document.name,
+        mimeType: document.type,
+        size: document.size ?? null,
+      });
+      if (preparedDocument.size && preparedDocument.size > MAX_RECEIPT_FILE_SIZE_BYTES) {
+        throw new Error('Dosya boyutu 10 MB sinirini asamaz.');
+      }
+
+      const preparedExt = getFileExt(preparedDocument.mimeType, preparedDocument.name);
+      const objectPath = `${property.id}/${actorId}/${Date.now()}-${Math.floor(Math.random() * 1e6)}.${preparedExt}`;
 
       const upload = await uploadFileToSupabaseStorage({
         bucket: 'receipts',
         path: objectPath,
-        fileUri: document.uri,
-        contentType: document.type,
+        fileUri: preparedDocument.uri,
+        contentType: preparedDocument.mimeType,
       });
 
-      const response = await uploadReceipt({
-        property_id: property.id,
-        receipt_type: receiptType,
-        amount: amountNum,
-        month,
-        storage_path: upload.path,
-        notes: notes || null,
-        replaces_receipt_id: replaceReceiptId || null,
-      });
+      let response;
+      try {
+        response = await uploadReceipt({
+          property_id: property.id,
+          receipt_type: receiptType,
+          amount: amountNum,
+          month,
+          storage_path: upload.path,
+          notes: notes || null,
+          replaces_receipt_id: replaceReceiptId || null,
+        });
+      } catch (error) {
+        await removeFilesFromSupabaseStorage('receipts', [upload.path]).catch(() => {});
+        throw error;
+      }
 
       setSubmittedState({
         receiptId: response.receipt_id,
@@ -317,7 +332,7 @@ export default function UploadReceiptScreen() {
         receiptType,
         amount,
         month,
-        documentName: document.name,
+        documentName: preparedDocument.name,
         notes: notes.trim(),
       });
     } catch (e: any) {

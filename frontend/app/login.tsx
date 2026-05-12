@@ -26,6 +26,7 @@ import {
   supabaseConfigurationErrorMessage,
 } from '../services/supabase';
 import { buildUserDataForSession, persistUserData } from '../services/userSession';
+import type { UserData } from '../services/userSession';
 import { getIoniconForContactIdentifier } from '../utils/contactIdentifier';
 import KeyboardAwareScrollView, {
   focusAndScrollToInput,
@@ -54,7 +55,13 @@ export default function LoginScreen() {
     setErrorMessage(message);
   };
 
-  const navigateBasedOnRole = (role: string) => {
+  const navigateBasedOnRole = (userData: UserData) => {
+    if (userData.status !== 'pending' && !userData.terms_accepted_at) {
+      router.replace('/legal-acceptance' as never);
+      return;
+    }
+
+    const role = userData.role;
     switch (role) {
       case 'admin':
         router.replace('/admin/dashboard');
@@ -120,7 +127,7 @@ export default function LoginScreen() {
       }
 
       await persistUserData(userData);
-      navigateBasedOnRole(userData.role);
+      navigateBasedOnRole(userData);
     } catch {
       showError(tr.auth.wrongCredentials);
     } finally {
@@ -247,6 +254,15 @@ export default function LoginScreen() {
                 />
               </Pressable>
             </View>
+
+            <TouchableOpacity
+              onPress={() => router.push(`/forgot-password?identifier=${encodeURIComponent(email.trim())}` as never)}
+              style={styles.forgotButton}
+              activeOpacity={0.78}
+              accessibilityRole="button"
+            >
+              <Text style={styles.forgotButtonText}>Sifremi unuttum</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.submitButton, (loading || !email.trim() || !password.trim()) ? styles.submitButtonDisabled : null]}
@@ -457,6 +473,17 @@ const useStyles = createThemedStyles((theme) => {
     },
     submitButtonDisabled: {
       opacity: 0.72,
+    },
+    forgotButton: {
+      alignSelf: 'flex-end',
+      marginTop: -theme.spacing.sm,
+      minHeight: 36,
+      justifyContent: 'center',
+    },
+    forgotButtonText: {
+      color: theme.colors.primary,
+      fontSize: theme.fontSize.sm,
+      fontWeight: theme.fontWeight.semibold,
     },
     submitText: {
       color: theme.colors.textInverse,

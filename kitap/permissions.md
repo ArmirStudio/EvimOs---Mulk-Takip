@@ -1,39 +1,54 @@
-# Yetkiler ve İzinler
+# Yetkiler ve Izinler
 
-Bu dosya canlı erişim matrisini ve davet kurallarını özetler.
+Bu dosya canli erisim matrisini ve rol kurallarini ozetler.
 
 ## Roller
-- `admin`
-- `agent`
-- `employee (full)`
-- `employee (limited)`
-- `landlord`
-- `tenant`
+- `admin`: platform yoneticisi.
+- `agent`: ofis sahibi.
+- `employee (full)`: agent ofisine bagli tam yetkili calisan.
+- `employee (limited)`: agent ofisine bagli sinirli yetkili calisan.
+- `landlord`: ev sahibi.
+- `tenant`: kiraci.
+
+## Admin Yetkileri
+| Islem | Admin |
+|---|---|
+| Agency olustur/duzenle | Evet |
+| Agent olustur/duzenle | Evet |
+| Mobil admin dev tools kullan | Evet |
+| Manuel kullaniciyi role ata | Evet |
+| Tenant/landlord/employee'i agent altina bagla | Evet |
+| Agent icin agency ata | Evet |
+| Reklam kampanyasi CRUD | Admin-web uzerinden evet |
+
+Admin dev tools disindaki roller `/api/admin/dev/*` endpointlerinden 403 alir.
 
 ## Davet Yetkileri
-| İşlem | Admin | Agent | Employee Full | Employee Limited | Landlord | Tenant |
+| Islem | Admin | Agent | Employee Full | Employee Limited | Landlord | Tenant |
 |---|---|---|---|---|---|---|
-| Davet oluştur | Evet | Evet | Evet | Hayır | Hayır | Hayır |
-| Pending listele | Evet | Evet | Evet | Hayır | Hayır | Hayır |
-| Pending onayla | Evet | Evet | Evet | Hayır | Hayır | Hayır |
-| Pending reddet | Evet | Evet | Evet | Hayır | Hayır | Hayır |
-| Takma ad görme | Evet | Evet | Hayır | Hayır | Hayır | Hayır |
-| Takma ad düzenleme | Evet | Evet | Hayır | Hayır | Hayır | Hayır |
+| Davet olustur | Evet | Evet | Evet | Hayir | Hayir | Hayir |
+| Pending listele | Evet | Evet | Evet | Hayir | Hayir | Hayir |
+| Pending onayla | Evet | Evet | Evet | Hayir | Hayir | Hayir |
+| Pending reddet | Evet | Evet | Evet | Hayir | Hayir | Hayir |
+| Takma ad gorme | Evet | Evet | Hayir | Hayir | Hayir | Hayir |
+| Takma ad duzenleme | Evet | Evet | Hayir | Hayir | Hayir | Hayir |
 
-## Takma Ad Gizliliği
-- `contact_label` agent'in özel takip adıdır.
-- Full employee, tenant ve landlord bu alanı görmez.
-- Sistem geneli ekranlarda `users.full_name` kullanılır.
-- Agent kendi panelinde profil adı ve takma ad ile arama yapabilir.
+## Kayit ve Baglanti Kurali
+- Tenant/landlord serbest kayit yapamaz.
+- Kayit icin gecerli link, davet kodu veya admin dev tools ile manuel baglama gerekir.
+- Kullanici public kayitta rol secemez.
+- Tenant, landlord ve employee kayitlari bir agent altina `created_by = agent.id` ile baglanir.
+- Employee icin `employee_access_level` `limited | full` olmak zorundadir.
+- Agent kaydi opsiyonel olarak agency altina baglanir.
 
-## Kayıt Kuralı
-- Tenant/landlord serbest kayıt yapamaz.
-- Kayıt için geçerli link veya davet kodu gerekir.
-- Kod ve link aynı tek kullanımlık davettir.
-- Kullanıcı rol seçemez; rol davetten gelir.
+## Takma Ad Gizliligi
+- `contact_label` agent'in ozel takip adidir.
+- Full employee, tenant ve landlord bu alani gormez.
+- Sistem geneli ekranlarda `users.full_name` kullanilir.
+- Agent kendi panelinde profil adi ve takma ad ile arama yapabilir.
 
-## Rehber İzinleri
-- Rehberden seçim mobil cihazda native contact picker ile yapılır.
-- Tüm rehber sisteme aktarılmaz.
-- Sadece seçilen kişinin ad, telefon ve e-posta bilgisi alınır.
-- Web veya izin reddi durumunda manuel giriş kullanılır.
+## Rehber Izinleri
+- Rehberden secim mobil cihazda native contact picker ile yapilir.
+- Tum rehber sisteme aktarilmaz.
+- Sadece secilen kisinin ad, telefon ve e-posta bilgisi alinir.
+- Web veya izin reddi durumunda manuel giris kullanilir.

@@ -15,6 +15,7 @@ export default function AdminLayout() {
       <Stack.Screen name="dashboard" options={getMainSurfaceScreenOptions(theme)} />
       <Stack.Screen name="companies" options={getMainSurfaceScreenOptions(theme)} />
       <Stack.Screen name="contacts" options={getMainSurfaceScreenOptions(theme)} />
+      <Stack.Screen name="dev-tools" options={getMainSurfaceScreenOptions(theme)} />
       <Stack.Screen name="settings" options={getMainSurfaceScreenOptions(theme)} />
 
       <Stack.Screen name="edit-company" options={getDetailScreenOptions(theme)} />

@@ -9,6 +9,7 @@ from core.access import get_office_owner_id, get_property_or_404, is_full_employ
 from core.database import supabase
 from core.notifications import notify_user, notify_users
 from core.security import get_current_user
+from core.storage import remove_storage_objects
 from models.schemas import (
     CreateAnnouncementRequest,
     CreateExpenseRequest,
@@ -1078,6 +1079,13 @@ def create_team_message(request: CreateTeamMessageRequest, current_user: dict = 
             created_attachments = attachment_result.data or []
         except Exception as exc:
             logger.exception("Team message attachment insert failed for message %s", created_message.get("id"))
+            try:
+                remove_storage_objects(
+                    TEAM_MESSAGE_FILE_BUCKET,
+                    [attachment.get("storage_path") for attachment in attachments],
+                )
+            except RuntimeError:
+                logger.exception("Team message attachment storage cleanup failed for message %s", created_message.get("id"))
             try:
                 supabase.table("team_messages").delete().eq("id", created_message["id"]).execute()
             except Exception:

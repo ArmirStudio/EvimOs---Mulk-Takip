@@ -16,6 +16,7 @@ from core.access import (
 from core.database import supabase
 from core.notifications import notify_user
 from core.security import get_current_user
+from core.storage import normalize_storage_path, remove_storage_object
 from models.schemas import (
     ReviewReceiptRequest,
     RevokeReceiptReviewRequest,
@@ -73,6 +74,38 @@ def _log_event(receipt_id: str, event_type: str, actor_id: Optional[str], detail
         }).execute()
     except Exception as exc:
         logger.warning("Receipt event logging failed for receipt %s: %s", receipt_id, exc)
+
+
+def _resolve_receipt_storage_path(receipt_doc: dict) -> Optional[str]:
+    return normalize_storage_path(receipt_doc.get("storage_path")) or normalize_storage_path(receipt_doc.get("document_url"))
+
+
+def _cleanup_replaced_receipt_file(replaced_receipt_id: Optional[str], current_user: dict, property_doc: dict) -> None:
+    if not replaced_receipt_id:
+        return
+
+    replaced_receipt = get_receipt_or_404(replaced_receipt_id)
+    if replaced_receipt.get("property_id") != property_doc.get("id"):
+        raise HTTPException(status_code=400, detail="Degistirilen dekont ayni mulke ait degil")
+    if replaced_receipt.get("uploaded_by") != current_user.get("id"):
+        raise HTTPException(status_code=403, detail="Bu dekont degistirilemez")
+
+    storage_path = _resolve_receipt_storage_path(replaced_receipt)
+    if not storage_path or replaced_receipt.get("status") not in ["rejected", "withdrawn"]:
+        return
+
+    try:
+        remove_storage_object("receipts", storage_path)
+    except RuntimeError as exc:
+        logger.warning("Replacement cleanup failed for receipt %s: %s", replaced_receipt_id, exc)
+        return
+
+    supabase.table("receipts").update({
+        "document_url": None,
+        "storage_path": None,
+        "updated_at": _now(),
+    }).eq("id", replaced_receipt_id).execute()
+    _log_event(replaced_receipt_id, "replacement_file_deleted", current_user["id"])
 
 
 def _serialize_receipt_detail(receipt_doc: dict, property_doc: dict) -> dict:
@@ -145,6 +178,9 @@ def upload_receipt(request: UploadReceiptRequest, current_user: dict = Depends(g
         raise HTTPException(status_code=500, detail="Dekont kaydedilemedi")
     created_receipt = result.data[0]
     receipt_id = created_receipt["id"]
+
+    if request.replaces_receipt_id:
+        _cleanup_replaced_receipt_file(request.replaces_receipt_id, current_user, property_doc)
 
     _log_event(
         receipt_id,
@@ -269,12 +305,21 @@ def withdraw_receipt(
     if receipt_doc["status"] not in ["pending", "rejected"]:
         raise HTTPException(status_code=400, detail="Bu dekont geri alinamaz")
 
+    storage_path = _resolve_receipt_storage_path(receipt_doc)
+    if storage_path:
+        try:
+            remove_storage_object("receipts", storage_path)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
     now = _now()
     supabase.table("receipts").update({
         "status": "withdrawn",
         "withdrawn_at": now,
         "withdrawn_by": current_user["id"],
         "withdrawal_reason": request.reason,
+        "document_url": None,
+        "storage_path": None,
         "updated_at": now,
     }).eq("id", receipt_id).execute()
 

@@ -1,74 +1,86 @@
 # Ekranlar ve Navigasyon
 
-## Form ve Wizard Layout Notları
-- `/{role}/dashboard` ortak `DashboardScreen` kullanır; karşılama kartında metin merkezde kalmalı ve kart yüksekliği içeriğe göre çökmemelidir.
-- `/agent/create-property` step 2-6 alt CTA barı sabit footer olarak çalışır; scroll içeriği ölçülen footer yüksekliğine göre padding alır.
-- `/agent/add-tenant`, `/agent/edit-property`, `/agent/create-user`, `/tenant/upload-receipt` ve `/tenant/maintenance-request` ekranları footer/safe-area boşluğu açısından aynı mobil QA kapsamındadır.
+Bu dosya canli route haritasini ve rol bazli erisimi ozetler.
 
-Bu dosya canlı route haritasını ve rol bazlı erişimi özetler.
-
-## Ana Route Haritası
-
-| Route | Dosya | Açıklama |
+## Public ve Auth Route'lari
+| Route | Dosya | Aciklama |
 |---|---|---|
-| `/` | `frontend/app/index.tsx` | Session kontrolü ve role göre yönlendirme |
-| `/login` | `frontend/app/login.tsx` | Giriş |
-| `/register` | `frontend/app/register.tsx` | Davet kodu ile kayıt |
-| `/invite/[token]` | `frontend/app/invite/[token].tsx` | Link tabanlı davet kayıt |
-| `/set-password` | `frontend/app/set-password.tsx` | Davet sonrası şifre belirleme |
-| `/admin/dashboard` | `frontend/app/admin/dashboard.tsx` | Mobil admin dashboard |
-| `/admin/companies` | `frontend/app/admin/companies.tsx` | Şirket ve ofis listesi |
-| `/admin/contacts` | `frontend/app/admin/contacts.tsx` | Agent ve employee rehberi |
-| `/admin/create-company` | `frontend/app/admin/create-company.tsx` | Şirket/ofis oluşturma |
-| `/admin/edit-company` | `frontend/app/admin/edit-company.tsx` | Şirket/ofis düzenleme |
-| `/admin/create-agent` | `frontend/app/admin/create-agent.tsx` | Agent oluşturma |
-| `/admin/edit-agent` | `frontend/app/admin/edit-agent.tsx` | Agent düzenleme |
-| `/{role}/dashboard` | `frontend/app/{role}/dashboard.tsx` | Ana panel |
-| `/{role}/properties` | `frontend/app/{role}/properties.tsx` | Mülk listesi |
-| `/{role}/property-detail` | `frontend/app/{role}/property-detail.tsx` | Mülk detay |
-| `/{role}/maintenance` | `frontend/app/{role}/maintenance.tsx` | Talepler/bakım merkezi |
-| `/{role}/receipts` | `frontend/app/{role}/receipts.tsx` | Dekont listesi |
-| `/agent/archive` | `frontend/app/agent/archive.tsx` | Dekont ve belge arşivi |
-| `/landlord/archive` | `frontend/app/landlord/archive.tsx` | Talepler/dekontlar sekmesine yönlenir |
-| `/{role}/calendar` | `frontend/app/{role}/calendar.tsx` | Takvim |
-| `/{role}/settings` | `frontend/app/{role}/settings.tsx` | Profil ve ayarlar |
-| `/{role}/profile-edit` | `frontend/app/{role}/profile-edit.tsx` | Profil düzenleme |
-| `/{role}/change-password` | `frontend/app/{role}/change-password.tsx` | Şifre değiştirme |
-| `/agent/team` | `frontend/app/agent/team.tsx` | Ekip merkezi |
-| `/agent/team-member` | `frontend/app/agent/team-member.tsx` | Çalışan detay |
-| `/agent/task-form` | `frontend/app/agent/task-form.tsx` | Görev formu |
-| `/agent/create-property` | `frontend/app/agent/create-property.tsx` | Mülk ekleme |
-| `/agent/edit-property` | `frontend/app/agent/edit-property.tsx` | Mülk düzenleme |
-| `/agent/create-user` | `frontend/app/agent/create-user.tsx` | Landlord veya tenant oluşturma |
-| `/agent/contact-detail` | `frontend/app/agent/contact-detail.tsx` | Ev sahibi/kiracı detay |
-| `/agent/create-contact` | `frontend/app/agent/create-contact.tsx` | Usta/tadilatçı oluşturma |
-| `/agent/edit-contact` | `frontend/app/agent/edit-contact.tsx` | Usta/tadilatçı düzenleme |
-| `/agent/invite` | `frontend/app/agent/invite.tsx` | Davet oluşturma |
-| `/agent/pending-invites` | `frontend/app/agent/pending-invites.tsx` | Bekleyen davetler |
-| `/landlord/tenants` | `frontend/app/landlord/tenants.tsx` | Kiracı listesi |
-| `/tenant/property` | `frontend/app/tenant/property.tsx` | Tenant mülkü |
-| `/tenant/maintenance-request` | `frontend/app/tenant/maintenance-request.tsx` | Arıza formu |
-| `/tenant/upload-receipt` | `frontend/app/tenant/upload-receipt.tsx` | Dekont yükleme |
+| `/` | `frontend/app/index.tsx` | Session kontrolu ve role gore yonlendirme |
+| `/login` | `frontend/app/login.tsx` | E-posta veya telefonla giris |
+| `/forgot-password` | `frontend/app/forgot-password.tsx` | Sifre sifirlama e-postasi gonderme |
+| `/set-password` | `frontend/app/set-password.tsx` | Davet veya reset sonrasinda yeni sifre belirleme |
+| `/register` | `frontend/app/register.tsx` | Davet kodu ile kayit |
+| `/invite/[token]` | `frontend/app/invite/[token].tsx` | Link tabanli davet kaydi |
+| `/legal-acceptance` | `frontend/app/legal-acceptance.tsx` | Ilk giris sozlesme kabul ekrani |
 
-Not: `employee` rolü `/agent/*` route ailesini kullanır.
+## Admin Route'lari
+| Route | Dosya | Aciklama |
+|---|---|---|
+| `/admin/dashboard` | `frontend/app/admin/dashboard.tsx` | Mobil admin dashboard |
+| `/admin/companies` | `frontend/app/admin/companies.tsx` | Sirket ve ofis listesi |
+| `/admin/contacts` | `frontend/app/admin/contacts.tsx` | Agent ve employee rehberi |
+| `/admin/dev-tools` | `frontend/app/admin/dev-tools.tsx` | Manuel kullanici role/ofis baglama araci |
+| `/admin/settings` | `frontend/app/admin/settings.tsx` | Admin ayarlari, logout ve dev tools girisi |
+| `/admin/create-company` | `frontend/app/admin/create-company.tsx` | Sirket/ofis olusturma |
+| `/admin/edit-company` | `frontend/app/admin/edit-company.tsx` | Sirket/ofis duzenleme |
+| `/admin/create-agent` | `frontend/app/admin/create-agent.tsx` | Agent olusturma |
+| `/admin/edit-agent` | `frontend/app/admin/edit-agent.tsx` | Agent duzenleme |
+
+Admin bottom nav: `Panel`, `Sirketler`, `Iletisim`, `Gelisim`, `Ayarlar`. `Gelisim` sekmesi gecici dev tools sayfasina gider.
+
+## Rol Route'lari
+| Route | Aciklama |
+|---|---|
+| `/{role}/dashboard` | Ana panel |
+| `/{role}/properties` | Mulk listesi |
+| `/{role}/property-detail` | Mulk detay |
+| `/{role}/maintenance` | Talepler ve bakim merkezi |
+| `/{role}/receipts` | Dekont listesi |
+| `/{role}/calendar` | Takvim |
+| `/{role}/settings` | Profil ve ayarlar |
+| `/{role}/profile-edit` | Profil duzenleme |
+| `/{role}/change-password` | Sifre degistirme |
+
+`employee` rolu `/agent/*` route ailesini kullanir.
+
+## Agent Route'lari
+| Route | Aciklama |
+|---|---|
+| `/agent/team` | Ekip merkezi |
+| `/agent/team-messages` | Tam ekran ekip mesajlasmasi |
+| `/agent/team-member` | Calisan detay |
+| `/agent/task-form` | Gorev formu |
+| `/agent/create-property` | Mulk ekleme |
+| `/agent/edit-property` | Mulk duzenleme |
+| `/agent/create-user` | Landlord veya tenant olusturma |
+| `/agent/contact-detail` | Ev sahibi/kiraci detay |
+| `/agent/create-contact` | Usta/tadilatci olusturma |
+| `/agent/edit-contact` | Usta/tadilatci duzenleme |
+| `/agent/invite` | Davet olusturma |
+| `/agent/pending-invites` | Bekleyen davetler |
+
+## Landlord ve Tenant Route'lari
+| Route | Aciklama |
+|---|---|
+| `/landlord/tenants` | Kiraci listesi |
+| `/landlord/archive` | Talepler/dekontlar sekmesine yonlendirme |
+| `/tenant/property` | Tenant mulku |
+| `/tenant/maintenance-request` | Ariza formu |
+| `/tenant/upload-receipt` | Dekont yukleme |
 
 ## Bottom Nav
-- Admin: `Panel`, `Şirketler`, `İletişim`, `Ayarlar` + `Yeni Şirket` FAB.
-- Agent: `Ana Sayfa`, `Mülkler`, `Talepler`, `Ekibim`, `Profil`.
-- Employee: `Ana Sayfa`, `Mülkler`, `Talepler`, `Ekibim`, `Profil`.
-- Landlord: `Ana Sayfa`, `Mülkler`, `Talepler`, `Profil`.
+- Admin: `Panel`, `Sirketler`, `Iletisim`, `Gelisim`, `Ayarlar`.
+- Agent: `Ana Sayfa`, `Mulkler`, `Talepler`, `Ekibim`, `Profil`.
+- Employee: `Ana Sayfa`, `Mulkler`, `Talepler`, `Ekibim`, `Profil`.
+- Landlord: `Ana Sayfa`, `Mulkler`, `Talepler`, `Profil`.
 - Tenant: `Ana Sayfa`, `Evim`, `Taleplerim`, `Profil`.
-- Tenant, agent ve employee alt barda FAB göstermez.
-- Landlord arşivi `Talepler` iç sekmelerindedir.
-
-## Landlord Talepler Merkezi
-- `Aktif Talepler`: bakım talepleri.
-- `Dekontlar`: `listReceipts()` verisi ve dekont detayları.
-- `Belgeler`: `property_documents` kayıtları ve signed URL ile açma.
 
 ## Gizli Route'lar
-Alt barda görünmeyip akıştan açılan ana route'lar:
-- `/agent/team-messages` — tam ekran mesajlaşma, tab bar gizlenir; metin, yanıt ve private dosya eki gönderimi
+Alt barda gorunmeyip akistan acilan ana route'lar:
+- `/forgot-password`
+- `/set-password`
+- `/legal-acceptance`
+- `/agent/team-messages`
 - `/agent/contact-detail`
 - `/agent/team-member`
 - `/agent/task-form`
@@ -80,3 +92,9 @@ Alt barda görünmeyip akıştan açılan ana route'lar:
 - `task` -> `/agent/team?tab=tasks&openTaskId={id}`
 - `announcement` -> `/agent/team?tab=announcements`
 - `team_message` -> `/agent/team-messages`
+
+## Mobil QA Notlari
+- Wizard ve form ekranlarinda alt CTA/footer safe-area padding ile calismali.
+- `/agent/create-property`, `/agent/add-tenant`, `/agent/edit-property`, `/agent/create-user`, `/tenant/upload-receipt` ve `/tenant/maintenance-request` footer/safe-area regresyonlari icin kontrol edilir.
+- `/legal-acceptance` aktif kullaniciyi dashboard oncesinde bloke eder.
+- `/admin/dev-tools` sadece admin oturumuyla manuel smoke test edilir.

@@ -19,8 +19,10 @@ import { useUserData } from '../../hooks/useUserData';
 import { supabase } from '../../services/supabase';
 import {
   createSignedStorageUrl,
+  removeFilesFromSupabaseStorage,
   uploadFileToSupabaseStorage,
 } from '../../services/supabaseStorage';
+import { prepareUploadAsset } from '../../services/uploadPreparation';
 import {
   canDeletePropertyDocuments,
   canUploadPropertyDocuments,
@@ -188,28 +190,35 @@ export const DocumentVault: React.FC<DocumentVaultProps> = ({ propertyId }) => {
 
       const file = result.assets[0];
       setUploading(true);
+      const preparedFile = await prepareUploadAsset({
+        uri: file.uri,
+        name: file.name,
+        mimeType: file.mimeType || 'application/octet-stream',
+        size: file.size ?? null,
+      });
 
-      const sanitizedName = file.name.replace(/\s+/g, '-');
+      const sanitizedName = preparedFile.name.replace(/\s+/g, '-');
       const filePath = `${propertyId}/${Date.now()}-${sanitizedName}`;
 
       const upload = await uploadFileToSupabaseStorage({
         bucket: 'property-documents',
         path: filePath,
-        fileUri: file.uri,
-        contentType: file.mimeType || 'application/octet-stream',
+        fileUri: preparedFile.uri,
+        contentType: preparedFile.mimeType,
         client: supabase,
       });
 
       const { error: dbError } = await supabase.from('property_documents').insert({
         property_id: propertyId,
         category: selectedCategoryMeta.id,
-        title: file.name,
+        title: preparedFile.name,
         file_url: upload.path,
         storage_path: upload.path,
         uploaded_by: userData?.id,
       });
 
       if (dbError) {
+        await removeFilesFromSupabaseStorage('property-documents', [upload.path], supabase).catch(() => {});
         throw dbError;
       }
 
@@ -250,12 +259,12 @@ export const DocumentVault: React.FC<DocumentVaultProps> = ({ propertyId }) => {
         onPress: async () => {
           try {
             const storagePath = document.storage_path || document.file_url;
+            if (storagePath) {
+              await removeFilesFromSupabaseStorage('property-documents', [storagePath], supabase);
+            }
             const { error } = await supabase.from('property_documents').delete().eq('id', document.id);
             if (error) {
               throw error;
-            }
-            if (storagePath) {
-              await supabase.storage.from('property-documents').remove([storagePath]);
             }
             setDocuments((prev) => prev.filter((item) => item.id !== document.id));
           } catch (err: any) {

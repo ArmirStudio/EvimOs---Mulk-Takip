@@ -1,102 +1,84 @@
 # Frontend
 
-Mobil istemci Expo Router tabanlıdır. Yeni ekranlar mevcut tema, marka ve route düzeninden ayrılmamalıdır.
+Mobil istemci Expo Router tabanlidir. Route dosyalari `frontend/app/` altinda, ortak ekran ve bilesenler `frontend/components/`, API katmani `frontend/services/appApi.ts` altinda tutulur.
 
-## Mobil Layout ve Footer Kuralları
-- Dashboard karşılama kartı `DashboardScreen` içinde sabit/minimum yükseklikle korunur; metin absolute konumlanmaz.
-- Wizard ve form ekranlarında alt CTA/footer ekranın altında sabit kalmalı; scroll içeriği footer yüksekliği kadar padding alarak footer arkasına kaçmamalıdır.
-- Safe-area alt boşlukları `Math.max(insets.bottom, minimum)` paterniyle hesaplanır.
-- Android ve iOS küçük ekranlarda klavye açıkken input kaybı ve CTA üstünde büyük boş alan regresyon kabul edilir.
+## Guncel Durum
+- `frontend` TypeScript kontrolu temiz geciyor: `npm.cmd exec tsc -- --noEmit`.
+- Public auth ekranlari, role dashboard yonlendirmeleri, yasal kabul ve sifremi unuttum akislari aktif.
+- Mobil admin icinde gecici `/admin/dev-tools` sayfasi vardir.
+- Reklam kampanyasi CRUD mobilde tutulmaz; admin-web kanonik paneldir.
 
-## Tasarım Kuralları
-- Renk, spacing, radius ve font için `frontend/app/theme.ts` tokenları kullanılır.
-- Kullanıcıya görünen metinler **tam Türkçe karakterli** yazılır (ş, ç, ğ, ı, ö, ü). ASCII fallback kabul edilmez.
-- Yeni ekranlarda hardcoded hex/rgba kullanılmaz.
-- Public auth ekranları `BrandLockup`, `frontend/constants/brand.ts` ve `getPublicSurface(theme)` dilini takip eder.
-- Bileşen stilleri `createThemedStyles` + `useAppTheme` ile tanımlanır.
-- `Switch` bileşenlerinde `trackColor={{ false: '#D4D4D4', true: theme.colors.primary }}` ve `thumbColor="#FFFFFF"` zorunludur; native iOS yeşili kullanılmaz.
+## Auth ve Public Route'lar
+- `/login`: e-posta veya telefon + sifre ile giris.
+- `/forgot-password`: e-posta veya telefonla Supabase reset password e-postasi gonderir.
+- `/set-password`: davet ve sifre sifirlama callback sonrasinda yeni sifre belirler.
+- `/register`: davet kodu ile kayit.
+- `/invite/[token]`: link tabanli davet kaydi.
+- `/legal-acceptance`: ilk giriste sozlesme kabul ekranidir.
 
-## Form Validasyon Kuralları
-- Submit butonu zorunlu alanlar boşken `disabled` olur; validation için `Alert.alert` kullanılmaz.
-- Login: `email` ve `password` dolu olmadan giriş butonu aktif değildir.
-- Duyuru formu: başlık, içerik ve alıcı seçimi (sendToAll kapalıysa) dolmadan gönder butonu aktif değildir.
+Root layout aktif kullanicinin `terms_accepted_at` alani bos ise dashboard yerine `/legal-acceptance` ekranina yonlendirir. Kabul edilmeden uygulama ici route'lara devam edilmez.
 
-### Dark Mode ve Public Surface
-- `publicSurface` sabit nesnesi artık doğrudan import edilmez; `getPublicSurface(theme)` çağrılır.
-- `getPublicSurface(theme)`: `isDarkTheme(theme)` true ise `theme.colors.surface/surface2` döner, false ise orijinal krem/açık renkler.
-- `isDarkTheme(theme)`: `theme.colors.background` hex'inin luminansını hesaplar; < 0.15 ise karanlık mod kabul edilir.
-- Kural: `createThemedStyles` arrow expression yerine block body (`const useStyles = createThemedStyles((theme) => { const surface = getPublicSurface(theme); return StyleSheet.create({...}); });`) kullanılır.
-- Etkilenen dosyalar: `login.tsx`, `register.tsx`, `index.tsx`, `BrandLockup.tsx`.
+## Login ve Sifre Sifirlama
+- Telefon girisi once `/api/auth/resolve-identifier` ile e-postaya cozulur.
+- Login Supabase `signInWithPassword` ile yapilir.
+- Sifremi unuttum akisi Supabase `resetPasswordForEmail` kullanir.
+- Deep link callback mevcut auth callback ve `/set-password` akisini kullanir.
 
-## Public Kayıt
-- `/register`: davet kodu lookup ve kayıt formu.
-- `/invite/[token]`: link doğrulama ve kayıt formu.
-- Kod veya link geçersiz, expired, used veya revoked ise kayıt açılmaz.
+## Mobil Admin
+Admin route ailesi:
+- `/admin/dashboard`
+- `/admin/companies`
+- `/admin/contacts`
+- `/admin/dev-tools`
+- `/admin/settings`
+- `/admin/create-company`
+- `/admin/edit-company`
+- `/admin/create-agent`
+- `/admin/edit-agent`
 
-## Agent Davet
-- Konum: `frontend/app/agent/invite.tsx`
-- Rol seçimi: tenant, ev sahibi veya çalışan.
-- Kişi girişi: `Rehberden Seç` veya `Manuel Gir`.
-- Web, izin reddi veya cihaz desteği yoksa manuel giriş kullanılır.
+Admin bottom nav: `Panel`, `Sirketler`, `Iletisim`, `Gelisim`, `Ayarlar`. `Gelisim` sekmesi dev tools icindir ve yalniz admin kullanicilarda anlamlidir.
 
-## Navigasyon
-- `AppBottomNav` rol konfigürasyonunun merkezidir.
-- Admin: `Panel`, `Şirketler`, `İletişim`, `Ayarlar` + `Yeni Şirket` FAB.
-- Agent/Employee: `Ana Sayfa`, `Mülkler`, `Talepler`, `Ekibim`, `Profil`; FAB yoktur.
-- Landlord: `Ana Sayfa`, `Mülkler`, `Talepler`, `Profil`; `Arşiv` alt bar sekmesi değildir.
-- Tenant: `Ana Sayfa`, `Evim`, `Taleplerim`, `Profil`; FAB yoktur.
-- Agent/employee üst header profil ikonu yoktur; profil alt bardan açılır.
-- `HIDDEN_FOR_LOCAL_NAV` listesindeki route'larda tab bar render edilmez. `/agent/team-messages` bu listededir — mesajlaşma ekranı tam ekran çalışır.
+Admin ayarlarinda:
+- Calismayan "agent hesabini askiya al" satiri kaldirildi.
+- Dev tools giris noktasi eklendi.
+- Logout artik AsyncStorage temizligiyle birlikte Supabase oturumunu da kapatir.
+- Agent olusturmada hardcoded `1234` sifre yoktur; gecici sifre davranisi backend ortam ayarlarina baglidir.
 
-## Ekibim (TeamHubScreen)
-- Tab bar yatay kaydırılabilir ScrollView: **Görevler · Duyurular · Toplantılar · Harcamalar**.
-- Header sağı: mesaj ikonu butonu → `router.push('/agent/team-messages')`, yeşil nokta badge mesaj varsa.
-- Hero kart compact: stat satırı (üye/görev/okunmayan) + context hint listesi.
-- `TeamMeetingsPanel`, `TeamExpensesPanel` ayrı bileşen dosyalarındadır.
-- `visibleTabs: ['tasks', 'announcements', 'meetings', 'expenses']`
+## Admin Dev Tools
+`/admin/dev-tools` ekrani Supabase'de manuel olusturulan veya baglantisi eksik kullanicilari duzeltmek icindir.
 
-## Mesajlaşma
-- `/agent/team-messages` route'u — ayrı tam ekran sayfa, `slide_from_right` animasyonu.
-- `agent/_layout.tsx`'e `<Stack.Screen name="team-messages" options={getDetailScreenOptions(theme)} />` eklendi.
-- `TeamMessagesPanel` yalnızca bu sayfada render edilir; TeamHubScreen içinden kaldırıldı.
+Ekran alanlari:
+- kullanici secimi
+- rol secimi: `admin | agent | employee | landlord | tenant`
+- hedef agent/ofis sahibi
+- employee access level: `limited | full`
+- status: `active | pending`
+- agent icin agency secimi
 
-### Mesajlaşma Layout (WhatsApp Referansı)
-```
-SafeAreaView (flex:1)
-  View style={header}
-  KeyboardAvoidingView (flex:1, behavior="padding")
-    FlatList (flex:1)          ← mesaj listesi, inverted değil, scrollToEnd ile aşağı başlar
-      ...gün ayraçları (type: 'day')
-      ...mesaj balonları
-    ReplyPreviewBar             ← replyingTo doluyken görünür
-    MessageComposer             ← her zaman altta
-```
-- **Gün ayraçları**: `buildListItems()` fonksiyonu mesajlar arasına `{ type: 'day', label }` objeleri enjekte eder.
-  - "Bugün" / "Dün" / "5 Ocak 2026" formatı, Türkçe `toLocaleDateString`.
-- **Mesaj balonları**:
-  - Kendi mesajı: sağa hizalı, `bubbleOwn` stili (tema primaryLight).
-  - Diğerinin mesajı: sola hizalı, `bubbleOther` stili + avatar (ad baş harfi) + gönderen adı + saat.
-  - Yanıtlı mesaj: balon içinde quote kutusu (gri arka plan, sol ince çizgi, 1 satıra kısaltılmış önizleme).
-- **Gördü tiki**: son kendi mesajının altında `MaterialIcons name="done"` (tek ✓) veya `"done-all"` (çift ✓✓, mavi) — `readStatus`'taki `last_read_at >= message.created_at` olan üye sayısına göre.
-- **Long press → yanıtla**: `onLongPress` prop ile `replyingTo` state güncellenir; `ReplyPreviewBar` açılır; × ile iptal.
-- **Composer**: altta sabit mesaj kutusu + tek `+` butonu. Eski kamera ve mikrofon placeholder ikonları yoktur.
-- **Ek menüsü**: `+` butonuna basınca composer üstünde `Kamera`, `Galeri`, `Dosyalar` kartı açılır; mikrofon/ses kaydı yoktur.
-- **Ek kuralları**: Mesaj başına en fazla 5 ek, dosya başına 10 MB. `audio/*` ve `video/*` dosyaları reddedilir.
-- **Ek önizleme**: Seçilen ekler composer üstünde silinebilir chip olarak görünür; metinsiz yalnız ek gönderilebilir.
-- **Mesaj içi ekler**: Gönderilen ekler balon içinde dosya chip'i olarak görünür; tıklanınca `team-message-files` private bucket için signed URL oluşturularak açılır.
-- **Gönderim**: Ekli mesajlarda dosyalar önce Supabase Storage'a yüklenir, sonra `/team/messages` API'sine metadata gönderilir. Upload başarısızsa mesaj kaydı açılmaz ve composer içeriği korunur.
+Tenant, landlord ve employee baglantisinda `created_by = selectedAgent.id` yazilir. Auth metadata senkronizasyonu backend tarafinda yapilir.
 
-## Profil Ekranı (SettingsScreen)
-- Tab bar sadece agent'ta görünür: **Profil · Rehber · Raporlar**.
-- Raporlar sekmesi yalnızca `role === 'agent'`; employee_access_level'a bakılmaz.
-- `AgentReportsPanel` bileşeni harcama özeti ve ekip performansını gösterir.
+## Agent ve Employee
+- `agent` ve `employee` rolleri `/agent/*` route ailesini kullanir.
+- Bottom nav: `Ana Sayfa`, `Mulkler`, `Talepler`, `Ekibim`, `Profil`.
+- `Ekibim` ekraninda gorevler, duyurular, toplantilar ve harcamalar vardir.
+- Mesajlasma `/agent/team-messages` tam ekran route'unda acilir ve tab bar gizlenir.
 
-## Takvim ve Nav Görseli
-- `CalendarWidget` başlık toggle ile açılıp kapanır.
-- Alt nav `expo-blur` BlurView ile cam efekti kullanır.
+## Landlord ve Tenant
+- Landlord bottom nav: `Ana Sayfa`, `Mulkler`, `Talepler`, `Profil`.
+- Tenant bottom nav: `Ana Sayfa`, `Evim`, `Taleplerim`, `Profil`.
+- Tenant ariza bildirimi ve dekont yukleme akislarini kendi operasyon ekranlarindan acar.
+- Landlord talepler ekraninda aktif talepler, dekontlar ve belgeler sekmelerini gorur.
 
-## İnternet Bağlantısı Kontrolü
-- `@react-native-community/netinfo` paketi ile gerçek zamanlı ağ izlemesi yapılır.
-- `frontend/hooks/useNetworkStatus.ts`: `isConnected: boolean` döner; `true` optimistic başlangıçla overlay yanıp sönmesi engellenir.
-- `frontend/components/Shared/NoInternetOverlay.tsx`: İnternet kesilince tüm ekranı kapatan absolute overlay. "Tekrar Dene" butonu `NetInfo.fetch()` çağırır.
-- `_layout.tsx` `GestureHandlerRootView` içinde `AppBottomNav`'dan sonra render edilir.
+## Tasarim ve Kod Kurallari
+- Renk, spacing, radius ve font icin `frontend/app/theme.ts` tokenlari kullanilir.
+- Kullaniciya gorunen metinlerde `translations.ts` ve mevcut lokalizasyon dili korunur.
+- Public auth ekranlari `BrandLockup`, `frontend/constants/brand.ts` ve `getPublicSurface(theme)` dilini takip eder.
+- Bilesen stilleri `createThemedStyles` + `useAppTheme` ile tanimlanir.
+- `frontend/app/` altina yalniz route dosyalari konur.
+
+## Son TypeScript Duzeltmeleri
+- `navigationTransitions.ts` Expo Router tipleriyle cakismayacak sekilde sade opsiyon tipi kullanir.
+- `NoInternetOverlay.tsx` gecerli Ionicons adi kullanir.
+- `TeamExpensesPanel.tsx` upload helper'i dogru payload ile cagirir.
+- `brand.ts` `publicSurface` dark theme donusunu literal type'a takilmadan dondurur.
+- `agent/create-property.tsx` nullable landlord secimini `createProperty` oncesi daraltir.

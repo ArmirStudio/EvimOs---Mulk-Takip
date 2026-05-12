@@ -551,6 +551,13 @@ export function transitionTeamTask(
   });
 }
 
+export function acceptLegalTerms() {
+  return apiRequest<{ success: boolean; user: any }>('/users/me/legal-acceptance', {
+    method: 'PATCH',
+    body: { accepted: true },
+  });
+}
+
 export function deleteTeamTask(taskId: string) {
   return apiRequest<{ success: boolean }>(`/team/tasks/${taskId}`, {
     method: 'DELETE',
@@ -852,6 +859,55 @@ export function remindPendingInvite() {
 
 export function getAdminDashboard() {
   return apiRequest<any>('/admin/dashboard');
+}
+
+export type AdminDevUserRole = 'agent' | 'landlord' | 'tenant' | 'employee';
+
+export type AdminDevUser = {
+  id: string;
+  auth_id: string;
+  email: string;
+  full_name: string;
+  phone?: string | null;
+  role: AdminDevUserRole;
+  status: 'pending' | 'active';
+  created_by?: string | null;
+  agency_id?: string | null;
+  employee_access_level?: 'full' | 'limited' | null;
+  city?: string | null;
+  district?: string | null;
+  created_at?: string | null;
+};
+
+export type AdminDevAgent = {
+  id: string;
+  email: string;
+  full_name: string;
+  status?: 'pending' | 'active';
+  agency_id?: string | null;
+  agencies?: any;
+};
+
+export function listAdminDevUsers() {
+  return apiRequest<{ users: AdminDevUser[] }>('/admin/dev/users');
+}
+
+export function listAdminDevAgents() {
+  return apiRequest<{ agents: AdminDevAgent[]; agencies: any[] }>('/admin/dev/agents');
+}
+
+export function linkAdminDevUser(payload: {
+  user_id: string;
+  role: AdminDevUserRole;
+  target_agent_id?: string | null;
+  agency_id?: string | null;
+  employee_access_level?: 'full' | 'limited' | null;
+  status: 'pending' | 'active';
+}) {
+  return apiRequest<{ success: boolean; user: AdminDevUser }>('/admin/dev/link-user', {
+    method: 'POST',
+    body: payload,
+  });
 }
 
 export function listAdminStructures() {

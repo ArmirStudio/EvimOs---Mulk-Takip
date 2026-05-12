@@ -25,6 +25,7 @@ const ROLE_NAV_ITEMS: Record<Role, NavItem[]> = {
     { label: 'Panel', icon: 'analytics-outline', path: '/admin/dashboard' },
     { label: 'Şirketler', icon: 'business-outline', path: '/admin/companies' },
     { label: 'İletişim', icon: 'people-outline', path: '/admin/contacts' },
+    { label: 'Dev', icon: 'construct-outline', path: '/admin/dev-tools' },
     { label: 'Ayarlar', icon: 'settings-outline', path: '/admin/settings' },
   ],
   agent: [

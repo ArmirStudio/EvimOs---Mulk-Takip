@@ -48,7 +48,12 @@ import type {
   TeamTab,
   TeamTask,
 } from '../../services/teamTypes';
-import { resolveSupabaseStorageUrl, uploadFileToSupabaseStorage } from '../../services/supabaseStorage';
+import {
+  removeFilesFromSupabaseStorage,
+  resolveSupabaseStorageUrl,
+  uploadFileToSupabaseStorage,
+} from '../../services/supabaseStorage';
+import { prepareUploadAsset } from '../../services/uploadPreparation';
 import { hasFullEmployeeAccess } from '../../utils/employeeAccess';
 import {
   formatLongDate,
@@ -407,7 +412,6 @@ export default function TeamHubScreen() {
   const pickAnnouncementImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      quality: 0.8,
       allowsEditing: true,
     });
     if (!result.canceled && result.assets[0]) {
@@ -454,25 +458,35 @@ export default function TeamHubScreen() {
       let attachmentKind: AnnouncementAttachmentDraft['kind'] | null = null;
 
       if (announcementAttachment) {
-        const ext = announcementAttachment.name.includes('.') ? announcementAttachment.name.split('.').pop() : 'bin';
+        const preparedAttachment = await prepareUploadAsset({
+          uri: announcementAttachment.uri,
+          name: announcementAttachment.name,
+          mimeType: announcementAttachment.mimeType,
+        });
+        const ext = preparedAttachment.name.includes('.') ? preparedAttachment.name.split('.').pop() : 'bin';
         const upload = await uploadFileToSupabaseStorage({
           bucket: 'announcement-files',
           path: `${userData?.id || 'office'}/${Date.now()}.${ext}`,
-          fileUri: announcementAttachment.uri,
-          contentType: announcementAttachment.mimeType,
+          fileUri: preparedAttachment.uri,
+          contentType: preparedAttachment.mimeType,
         });
         attachmentPath = upload.path;
         attachmentKind = announcementAttachment.kind;
       }
 
-      await createTeamAnnouncement({
-        title: announcementTitle.trim(),
-        body: announcementBody.trim(),
-        send_to_all: sendToAll,
-        recipient_ids: sendToAll ? [] : selectedRecipients,
-        attachment_path: attachmentPath,
-        attachment_kind: attachmentKind,
-      });
+      try {
+        await createTeamAnnouncement({
+          title: announcementTitle.trim(),
+          body: announcementBody.trim(),
+          send_to_all: sendToAll,
+          recipient_ids: sendToAll ? [] : selectedRecipients,
+          attachment_path: attachmentPath,
+          attachment_kind: attachmentKind,
+        });
+      } catch (error) {
+        await removeFilesFromSupabaseStorage('announcement-files', [attachmentPath]).catch(() => {});
+        throw error;
+      }
 
       setAnnouncementModalVisible(false);
       setAnnouncementTitle('');
@@ -527,7 +541,6 @@ export default function TeamHubScreen() {
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
       selectionLimit: 5,
-      quality: 0.7,
     });
     if (!result.canceled) {
       setTaskActionPhotos((prev) => [...prev, ...result.assets.map((asset) => asset.uri)].slice(0, 5));
@@ -536,16 +549,26 @@ export default function TeamHubScreen() {
 
   const uploadTaskPhotos = async (taskId: string) => {
     const uploads: string[] = [];
-    for (let index = 0; index < taskActionPhotos.length; index += 1) {
-      const upload = await uploadFileToSupabaseStorage({
-        bucket: 'task-photos',
-        path: `${taskId}/${Date.now()}-${index}.jpg`,
-        fileUri: taskActionPhotos[index],
-        contentType: 'image/jpeg',
-      });
-      uploads.push(upload.path);
+    try {
+      for (let index = 0; index < taskActionPhotos.length; index += 1) {
+        const preparedPhoto = await prepareUploadAsset({
+          uri: taskActionPhotos[index],
+          name: `task-${taskId}-${index}.jpg`,
+          mimeType: 'image/jpeg',
+        });
+        const upload = await uploadFileToSupabaseStorage({
+          bucket: 'task-photos',
+          path: `${taskId}/${Date.now()}-${index}.jpg`,
+          fileUri: preparedPhoto.uri,
+          contentType: preparedPhoto.mimeType,
+        });
+        uploads.push(upload.path);
+      }
+      return uploads;
+    } catch (error) {
+      await removeFilesFromSupabaseStorage('task-photos', uploads).catch(() => {});
+      throw error;
     }
-    return uploads;
   };
 
   const handleTaskTransition = async (action: 'start' | 'complete' | 'cancel') => {

@@ -18,6 +18,7 @@ from core.security import get_current_user
 from models.schemas import (
     AdminCampaignPayload,
     AdminCampaignUpdatePayload,
+    AdminDevLinkUserRequest,
     AdminToggleActiveRequest,
     CreateAgencyRequest,
     CreateStandaloneAgentRequest,
@@ -119,6 +120,7 @@ def _normalize_campaign_payload(payload: dict[str, Any], *, for_update: bool) ->
 def _build_auth_metadata(profile: dict[str, Any]) -> dict[str, Any]:
     metadata = {
         "role": profile.get("role") or "",
+        "status": profile.get("status") or "",
         "full_name": profile.get("full_name") or "",
         "phone": profile.get("phone") or "",
         "city": profile.get("city") or "",
@@ -130,6 +132,34 @@ def _build_auth_metadata(profile: dict[str, Any]) -> dict[str, Any]:
         "brand_color_secondary": profile.get("brand_color_secondary") or "",
     }
     return metadata
+
+
+def _fetch_agent_for_dev(agent_id: str) -> dict[str, Any]:
+    agent = (
+        supabase.table("users")
+        .select("id, role, status, full_name, email, agency_id")
+        .eq("id", agent_id)
+        .maybe_single()
+        .execute()
+        .data
+    )
+    if not agent or agent.get("role") != "agent":
+        raise HTTPException(status_code=400, detail="Baglanacak agent bulunamadi")
+    return agent
+
+
+def _fetch_dev_user(user_id: str) -> dict[str, Any]:
+    user = (
+        supabase.table("users")
+        .select("*")
+        .eq("id", user_id)
+        .maybe_single()
+        .execute()
+        .data
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail="Kullanici bulunamadi")
+    return user
 
 
 def _create_auth_backed_user(
@@ -516,6 +546,107 @@ def list_admin_contacts(current_user: dict = Depends(get_current_user)):
         contact["agencies"] = agency_map.get(contact.get("agency_id"))
 
     return {"contacts": contacts}
+
+
+@router.get("/dev/users")
+def list_admin_dev_users(current_user: dict = Depends(get_current_user)):
+    _require_admin(current_user)
+    users = (
+        supabase.table("users")
+        .select(
+            "id, auth_id, email, full_name, phone, role, status, created_by, "
+            "agency_id, employee_access_level, city, district, created_at"
+        )
+        .order("created_at", desc=True)
+        .limit(250)
+        .execute()
+        .data
+        or []
+    )
+
+    candidates = [
+        user for user in users
+        if user.get("role") in {"agent", "landlord", "tenant", "employee"}
+    ]
+    return {"users": candidates}
+
+
+@router.get("/dev/agents")
+def list_admin_dev_agents(current_user: dict = Depends(get_current_user)):
+    _require_admin(current_user)
+    agents = (
+        supabase.table("users")
+        .select(
+            "id, email, full_name, phone, status, agency_id, brand_color_primary, "
+            "agencies:agency_id(id, name, location, entity_type, brand_color_primary)"
+        )
+        .eq("role", "agent")
+        .order("full_name", desc=False)
+        .execute()
+        .data
+        or []
+    )
+    agencies = (
+        supabase.table("agencies")
+        .select("id, name, location, entity_type, status, brand_color_primary")
+        .order("name", desc=False)
+        .execute()
+        .data
+        or []
+    )
+    return {"agents": agents, "agencies": agencies}
+
+
+@router.post("/dev/link-user")
+def link_admin_dev_user(
+    request: AdminDevLinkUserRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    _require_admin(current_user)
+    target_user = _fetch_dev_user(request.user_id)
+    role = request.role
+
+    updates: dict[str, Any] = {
+        "role": role,
+        "status": request.status,
+        "updated_at": _now(),
+    }
+
+    if role in {"tenant", "landlord", "employee"}:
+        if not request.target_agent_id:
+            raise HTTPException(status_code=400, detail="Tenant, landlord ve employee icin agent secilmelidir")
+        agent = _fetch_agent_for_dev(request.target_agent_id)
+        updates["created_by"] = agent["id"]
+        updates["agency_id"] = None
+        updates["employee_access_level"] = (
+            request.employee_access_level or "limited"
+            if role == "employee"
+            else None
+        )
+    else:
+        updates["created_by"] = target_user.get("created_by") or current_user.get("id")
+        updates["agency_id"] = _strip_or_none(request.agency_id)
+        updates["employee_access_level"] = None
+
+    updated = (
+        supabase.table("users")
+        .update(updates)
+        .eq("id", request.user_id)
+        .execute()
+        .data
+    )
+    user = (updated or [None])[0] or _fetch_dev_user(request.user_id)
+
+    if target_user.get("auth_id"):
+        try:
+            supabase.auth.admin.update_user_by_id(
+                target_user["auth_id"],
+                {"user_metadata": _build_auth_metadata(user)},
+            )
+        except Exception:
+            pass
+
+    return {"success": True, "user": user}
 
 
 @router.post("/agents/standalone")

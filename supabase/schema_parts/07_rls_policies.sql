@@ -268,10 +268,11 @@ CREATE POLICY "notif_read" ON public.notifications
   );
 
 -- Backend service_role bypass ile yazar; istemci katmaninda kontrol
--- TRUE = service_role harimdaki authenticated kullanicinin da yazmasina izin ver.
--- RLS bypass zaten service_role ile otomatik yapilir.
 CREATE POLICY "notif_insert" ON public.notifications
-  FOR INSERT WITH CHECK (TRUE);
+  FOR INSERT WITH CHECK (
+    user_id = public.get_current_user_id()
+    OR public.get_current_user_role() = 'admin'
+  );
 
 -- Kullanici kendi bildirimini okundu isaretle
 CREATE POLICY "notif_update" ON public.notifications
@@ -461,9 +462,19 @@ CREATE POLICY "ann_recipients_read" ON public.announcement_recipients
     OR public.get_current_user_role() = 'admin'
   );
 
--- Backend/service_role ekleyebilir (TRUE with check)
 CREATE POLICY "ann_recipients_insert" ON public.announcement_recipients
-  FOR INSERT WITH CHECK (TRUE);
+  FOR INSERT WITH CHECK (
+    user_id = public.get_current_user_id()
+    OR EXISTS (
+      SELECT 1 FROM public.announcements a
+      WHERE a.id = announcement_id
+        AND (
+          a.created_by = public.get_current_user_id()
+          OR a.office_owner_id = public.get_current_office_owner_id()
+          OR public.get_current_user_role() = 'admin'
+        )
+    )
+  );
 
 -- Kullanici kendi okuma durumunu guncelleyebilir
 CREATE POLICY "ann_recipients_update" ON public.announcement_recipients
@@ -577,8 +588,8 @@ CREATE POLICY "team_messages_insert" ON public.team_messages
     AND office_owner_id = public.get_current_office_owner_id()
     AND (reply_to_id IS NULL OR EXISTS (
       SELECT 1 FROM public.team_messages tm
-      WHERE tm.id = reply_to_id
-        AND tm.office_owner_id = office_owner_id
+      WHERE tm.id = public.team_messages.reply_to_id
+        AND tm.office_owner_id = public.team_messages.office_owner_id
     ))
   );
 
@@ -606,8 +617,8 @@ CREATE POLICY "team_message_attachments_insert" ON public.team_message_attachmen
     AND storage_path LIKE (office_owner_id::text || '/' || uploaded_by::text || '/%')
     AND EXISTS (
       SELECT 1 FROM public.team_messages tm
-      WHERE tm.id = message_id
-        AND tm.office_owner_id = office_owner_id
+      WHERE tm.id = public.team_message_attachments.message_id
+        AND tm.office_owner_id = public.team_message_attachments.office_owner_id
     )
   );
 

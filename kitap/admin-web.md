@@ -1,20 +1,23 @@
 # Admin Web
 
-`admin-web/` bağımsız React + Vite panelidir. Reklam kampanyası yönetiminin kanonik arayüzü burasıdır.
+`admin-web/` bagimsiz React + Vite panelidir. Reklam kampanyasi yonetiminin kanonik arayuzu burasidir.
 
 ## Sorumluluk
 - Kampanya listeleme.
-- Create, update, delete.
+- Kampanya create, update, delete.
 - Aktiflik toggle.
 - Duplicate.
 - Medya upload.
-- Canlı mobil preview.
-- Admin oturum doğrulaması.
+- Canli mobil preview.
+- Admin oturum dogrulamasi.
+
+Admin-web kullanici role/ofis baglama araci degildir. Bu gecici operasyon mobil admin `/admin/dev-tools` ekranindadir.
 
 ## Mimari
-- Auth için anon key kullanan Supabase client vardır.
-- Tüm yazma işlemleri backend `/api/admin/*` endpoint'lerine gider.
-- Ortak kampanya ve lokasyon modelleri `shared/` alias'ları ile kullanılır.
+- Auth icin anon key kullanan Supabase client vardir.
+- Tum yazma islemleri backend `/api/admin/*` endpointlerine gider.
+- Ortak kampanya ve lokasyon modelleri `shared/` alias'lari ile kullanilir.
+- Client tarafinda `service_role` beklenmez ve kullanilmaz.
 
 ## Temel Dosyalar
 - `src/lib/supabase.ts`
@@ -44,12 +47,11 @@
 - `GET /api/admin/agency-options`
 - `POST /api/admin/uploads/public`
 
-## Upload Kuralları
+## Upload Kurallari
 - Bucket: `ad-media`
-- Upload backend tarafında korunur.
-- Sadece görsel MIME type kabul edilir.
+- Upload backend tarafinda korunur.
+- Sadece gorsel MIME type kabul edilir.
 - Limit: 10 MB.
 
-## Temizlik Notu
-- `VITE_SUPABASE_SERVICE_ROLE_KEY` beklenmez.
-- Kampanya CRUD mobil uygulamada tutulmaz.
+## Dogrulama
+- Degisiklik sonrasi `admin-web` icinde `npm.cmd exec tsc -- --noEmit` kosulur.

@@ -81,6 +81,8 @@ CREATE POLICY "tenant_documents_write" ON storage.objects
 -- ── RECEIPTS (Private - owner veya property admin yazabilir/okuyabilir) ────────
 DROP POLICY IF EXISTS "receipts_private_read" ON storage.objects;
 DROP POLICY IF EXISTS "receipts_private_write" ON storage.objects;
+DROP POLICY IF EXISTS "receipts_private_update" ON storage.objects;
+DROP POLICY IF EXISTS "receipts_private_delete" ON storage.objects;
 
 CREATE POLICY "receipts_private_read" ON storage.objects
   FOR SELECT TO authenticated
@@ -93,9 +95,29 @@ CREATE POLICY "receipts_private_write" ON storage.objects
     AND auth.uid() IS NOT NULL
   );
 
+CREATE POLICY "receipts_private_update" ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (
+    bucket_id = 'receipts'
+    AND auth.uid() IS NOT NULL
+  )
+  WITH CHECK (
+    bucket_id = 'receipts'
+    AND auth.uid() IS NOT NULL
+  );
+
+CREATE POLICY "receipts_private_delete" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (
+    bucket_id = 'receipts'
+    AND auth.uid() IS NOT NULL
+  );
+
 -- ── PROPERTY_DOCUMENTS (Private - owner veya property admin yazabilir/okuyabilir) ────────
 DROP POLICY IF EXISTS "property_documents_read" ON storage.objects;
 DROP POLICY IF EXISTS "property_documents_write" ON storage.objects;
+DROP POLICY IF EXISTS "property_documents_update" ON storage.objects;
+DROP POLICY IF EXISTS "property_documents_delete" ON storage.objects;
 
 CREATE POLICY "property_documents_read" ON storage.objects
   FOR SELECT TO authenticated
@@ -104,6 +126,24 @@ CREATE POLICY "property_documents_read" ON storage.objects
 CREATE POLICY "property_documents_write" ON storage.objects
   FOR INSERT TO authenticated
   WITH CHECK (
+    bucket_id = 'property-documents'
+    AND auth.uid() IS NOT NULL
+  );
+
+CREATE POLICY "property_documents_update" ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (
+    bucket_id = 'property-documents'
+    AND auth.uid() IS NOT NULL
+  )
+  WITH CHECK (
+    bucket_id = 'property-documents'
+    AND auth.uid() IS NOT NULL
+  );
+
+CREATE POLICY "property_documents_delete" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (
     bucket_id = 'property-documents'
     AND auth.uid() IS NOT NULL
   );
@@ -127,6 +167,8 @@ CREATE POLICY "maintenance_photos_write" ON storage.objects
 -- TEAM_MESSAGE_FILES (Private - ayni ofis uyeleri okur, kullanici kendi klasorune yazar)
 DROP POLICY IF EXISTS "team_message_files_read" ON storage.objects;
 DROP POLICY IF EXISTS "team_message_files_insert" ON storage.objects;
+DROP POLICY IF EXISTS "team_message_files_update" ON storage.objects;
+DROP POLICY IF EXISTS "team_message_files_delete" ON storage.objects;
 
 CREATE POLICY "team_message_files_read" ON storage.objects
   FOR SELECT TO authenticated
@@ -146,8 +188,31 @@ CREATE POLICY "team_message_files_insert" ON storage.objects
     AND (storage.foldername(name))[2] = public.get_current_user_id()::text
   );
 
+CREATE POLICY "team_message_files_update" ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (
+    bucket_id = 'team-message-files'
+    AND (storage.foldername(name))[1] = public.get_current_office_owner_id()::text
+    AND (storage.foldername(name))[2] = public.get_current_user_id()::text
+  )
+  WITH CHECK (
+    bucket_id = 'team-message-files'
+    AND (storage.foldername(name))[1] = public.get_current_office_owner_id()::text
+    AND (storage.foldername(name))[2] = public.get_current_user_id()::text
+  );
+
+CREATE POLICY "team_message_files_delete" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (
+    bucket_id = 'team-message-files'
+    AND (storage.foldername(name))[1] = public.get_current_office_owner_id()::text
+    AND (storage.foldername(name))[2] = public.get_current_user_id()::text
+  );
+
 DROP POLICY IF EXISTS "team_public_files_read" ON storage.objects;
 DROP POLICY IF EXISTS "team_public_files_insert" ON storage.objects;
+DROP POLICY IF EXISTS "team_public_files_update" ON storage.objects;
+DROP POLICY IF EXISTS "team_public_files_delete" ON storage.objects;
 
 CREATE POLICY "team_public_files_read" ON storage.objects
   FOR SELECT USING (
@@ -157,6 +222,24 @@ CREATE POLICY "team_public_files_read" ON storage.objects
 CREATE POLICY "team_public_files_insert" ON storage.objects
   FOR INSERT TO authenticated
   WITH CHECK (
+    bucket_id IN ('task-photos', 'announcement-files')
+    AND auth.uid() IS NOT NULL
+  );
+
+CREATE POLICY "team_public_files_update" ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (
+    bucket_id IN ('task-photos', 'announcement-files')
+    AND auth.uid() IS NOT NULL
+  )
+  WITH CHECK (
+    bucket_id IN ('task-photos', 'announcement-files')
+    AND auth.uid() IS NOT NULL
+  );
+
+CREATE POLICY "team_public_files_delete" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (
     bucket_id IN ('task-photos', 'announcement-files')
     AND auth.uid() IS NOT NULL
   );

@@ -142,7 +142,14 @@ export default function TeamExpensesPanel({ expenses, loading, error, currentUse
     if (!receiptUri) return undefined; // undefined = no change
     setReceiptUploading(true);
     try {
-      return await uploadFileToSupabaseStorage(receiptUri, 'receipts', `expense_${Date.now()}.jpg`);
+      const upload = await uploadFileToSupabaseStorage({
+        bucket: 'receipts',
+        path: `expenses/expense_${Date.now()}.jpg`,
+        fileUri: receiptUri,
+        contentType: 'image/jpeg',
+        upsert: true,
+      });
+      return upload.publicUrl;
     } catch {
       Alert.alert('Uyarı', 'Fotoğraf yüklenemedi, harcama fotoğrafsız kaydedilecek.');
       return null;

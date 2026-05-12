@@ -20,7 +20,8 @@ import { createThemedStyles, useAppTheme } from '../theme';
 import { tr } from '../translations';
 import { listTeamMessages, createTeamMessage, markMessagesRead, getMessageReadStatus } from '../../services/appApi';
 import { useUserData } from '../../hooks/useUserData';
-import { uploadFileToSupabaseStorage } from '../../services/supabaseStorage';
+import { prepareUploadAsset } from '../../services/uploadPreparation';
+import { removeFilesFromSupabaseStorage, uploadFileToSupabaseStorage } from '../../services/supabaseStorage';
 import type {
   TeamMessage,
   TeamMessageAttachmentDraft,
@@ -155,7 +156,6 @@ export default function TeamMessagesScreen() {
     }
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ['images'],
-      quality: 0.8,
       base64: false,
     });
     if (!result.canceled && result.assets[0]) {
@@ -180,7 +180,6 @@ export default function TeamMessagesScreen() {
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
       selectionLimit: MAX_MESSAGE_ATTACHMENTS,
-      quality: 0.8,
       base64: false,
     });
     if (!result.canceled) {
@@ -216,8 +215,8 @@ export default function TeamMessagesScreen() {
 
   const uploadDraftAttachments = async (
     attachments: TeamMessageAttachmentDraft[]
-  ): Promise<TeamMessageAttachmentInput[]> => {
-    if (!attachments.length) return [];
+  ): Promise<{ inputs: TeamMessageAttachmentInput[]; uploadedPaths: string[] }> => {
+    if (!attachments.length) return { inputs: [], uploadedPaths: [] };
     if (!userData?.id) {
       throw new Error('Kullanici bilgisi bulunamadi');
     }
@@ -231,25 +230,47 @@ export default function TeamMessagesScreen() {
     }
 
     const timestamp = Date.now();
-    return Promise.all(attachments.map(async (attachment, index) => {
-      const safeName = sanitizeFileName(attachment.name);
-      const path = `${officeOwnerId}/${userData.id}/${timestamp}-${index}-${safeName}`;
-      const upload = await uploadFileToSupabaseStorage({
-        bucket: TEAM_MESSAGE_BUCKET,
-        path,
-        fileUri: attachment.uri,
-        contentType: attachment.mimeType,
-      });
+    const uploadedPaths: string[] = [];
 
-      return {
-        bucket: TEAM_MESSAGE_BUCKET,
-        storage_path: upload.path,
-        file_name: attachment.name,
-        mime_type: attachment.mimeType,
-        size_bytes: attachment.size ?? null,
-        kind: attachment.kind,
-      };
-    }));
+    try {
+      const inputs: TeamMessageAttachmentInput[] = [];
+
+      for (const [index, attachment] of attachments.entries()) {
+        const prepared = await prepareUploadAsset({
+          uri: attachment.uri,
+          name: attachment.name,
+          mimeType: attachment.mimeType,
+          size: attachment.size ?? null,
+        });
+        if (prepared.size && prepared.size > MAX_ATTACHMENT_BYTES) {
+          throw new Error(tr.team.messages.attachmentTooLarge);
+        }
+
+        const safeName = sanitizeFileName(prepared.name);
+        const path = `${officeOwnerId}/${userData.id}/${timestamp}-${index}-${safeName}`;
+        const upload = await uploadFileToSupabaseStorage({
+          bucket: TEAM_MESSAGE_BUCKET,
+          path,
+          fileUri: prepared.uri,
+          contentType: prepared.mimeType,
+        });
+        uploadedPaths.push(upload.path);
+
+        inputs.push({
+          bucket: TEAM_MESSAGE_BUCKET,
+          storage_path: upload.path,
+          file_name: prepared.name,
+          mime_type: prepared.mimeType,
+          size_bytes: prepared.size,
+          kind: attachment.kind,
+        });
+      }
+
+      return { inputs, uploadedPaths };
+    } catch (error) {
+      await removeFilesFromSupabaseStorage(TEAM_MESSAGE_BUCKET, uploadedPaths).catch(() => {});
+      throw error;
+    }
   };
 
   const handleSend = async () => {
@@ -260,10 +281,13 @@ export default function TeamMessagesScreen() {
 
     const tempId = `temp_${Date.now()}`;
     const replyId = replySnapshot?.id ?? null;
+    let uploadedPaths: string[] = [];
 
     setSubmitting(true);
     try {
-      const uploadedAttachments = await uploadDraftAttachments(attachmentSnapshot);
+      const uploadResult = await uploadDraftAttachments(attachmentSnapshot);
+      const uploadedAttachments = uploadResult.inputs;
+      uploadedPaths = uploadResult.uploadedPaths;
       setDraft('');
       setDraftAttachments([]);
       setAttachmentMenuOpen(false);
@@ -301,6 +325,7 @@ export default function TeamMessagesScreen() {
       setMessages((res.messages as TeamMessage[]) || []);
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: false }), 80);
     } catch (e: any) {
+      await removeFilesFromSupabaseStorage(TEAM_MESSAGE_BUCKET, uploadedPaths).catch(() => {});
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setDraft(body);
       setDraftAttachments(attachmentSnapshot);

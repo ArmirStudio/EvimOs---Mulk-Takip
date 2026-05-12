@@ -372,6 +372,12 @@ export default function CreatePropertyWizard() {
         ? `${roomType} | ${propertyName}`
         : propertyName;
 
+      const landlordId = selectedLandlord;
+      if (!landlordId) {
+        Alert.alert('Uyarı', 'Lütfen bir ev sahibi seçin.');
+        return;
+      }
+
       const result = await createProperty({
         description: descriptionWithRoom,
         address,
@@ -386,7 +392,7 @@ export default function CreatePropertyWizard() {
         contract_start: tenantMode === 'assign' ? contractStartFormatted : null,
         contract_end: contractEndFormatted,
         contract_duration: tenantMode === 'assign' ? contractDuration : null,
-        landlord_id: selectedLandlord,
+        landlord_id: landlordId,
         tenant_id: selectedTenant || null,
         employee_id: selectedStaff || null,
         is_furnished: furnishing === 'furnished',

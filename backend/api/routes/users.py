@@ -4,7 +4,7 @@ from datetime import datetime
 import re
 import time
 from core.database import supabase
-from models.schemas import CreateUserRequest, UpdateUserRequest
+from models.schemas import CreateUserRequest, LegalAcceptanceRequest, UpdateUserRequest
 from core.security import get_current_user
 from core.access import can_manage_office_records, get_office_owner_id, is_admin, is_full_employee
 
@@ -259,6 +259,29 @@ def list_users(role: Optional[str] = None, current_user: dict = Depends(get_curr
             user.pop("invites", None)
 
     return {"users": users}
+
+
+@router.patch("/me/legal-acceptance")
+def accept_legal_terms(
+    request: LegalAcceptanceRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    if not request.accepted:
+        raise HTTPException(status_code=400, detail="Kullanim sartlari kabul edilmelidir")
+
+    now = datetime.utcnow().isoformat()
+    result = (
+        supabase.table("users")
+        .update({
+            "terms_accepted_at": now,
+            "first_login": False,
+            "updated_at": now,
+        })
+        .eq("id", current_user["id"])
+        .execute()
+    )
+    user = result.data[0] if result.data else _get_user_or_404(current_user["id"])
+    return {"success": True, "user": user}
 
 
 @router.get("/{user_id}")

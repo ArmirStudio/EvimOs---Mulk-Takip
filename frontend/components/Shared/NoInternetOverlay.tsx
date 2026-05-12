@@ -71,7 +71,7 @@ export default function NoInternetOverlay({ visible, onRetry, isChecking }: Prop
       <View style={styles.content}>
         <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
           <Ionicons
-            name="wifi-off"
+            name="cloud-offline-outline"
             size={72}
             color={theme.colors.textMuted}
           />

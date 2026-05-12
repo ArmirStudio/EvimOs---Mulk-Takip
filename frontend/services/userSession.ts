@@ -37,6 +37,8 @@ export type UserData = {
   brand_color_secondary?: string | null;
   preferred_currency?: Currency | null;
   preferred_theme?: BackendThemePreference | null;
+  terms_accepted_at?: string | null;
+  first_login?: boolean | null;
   effectiveBrand?: EffectiveBrand | null;
 };
 
@@ -66,6 +68,8 @@ type UserBrandRow = {
   brand_color_secondary?: string | null;
   preferred_currency?: Currency | null;
   preferred_theme?: BackendThemePreference | null;
+  terms_accepted_at?: string | null;
+  first_login?: boolean | null;
   agencies?: AgencyBrandRow | AgencyBrandRow[] | null;
   invites?: {
     contact_label?: string | null;
@@ -220,6 +224,8 @@ export async function buildUserDataForSession(authId: string) {
       brand_color_secondary,
       preferred_currency,
       preferred_theme,
+      terms_accepted_at,
+      first_login,
       agencies:agency_id (
         name,
         brand_color_primary,
@@ -279,6 +285,8 @@ export async function buildUserDataForSession(authId: string) {
     brand_color_secondary: ownProfile.brand_color_secondary || null,
     preferred_currency: ownProfile.preferred_currency || null,
     preferred_theme: ownProfile.preferred_theme || null,
+    terms_accepted_at: ownProfile.terms_accepted_at || null,
+    first_login: ownProfile.first_login ?? null,
     effectiveBrand,
   } satisfies UserData;
 }

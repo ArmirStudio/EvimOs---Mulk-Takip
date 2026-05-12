@@ -38,6 +38,25 @@ export async function uploadFileToSupabaseStorage(options: UploadOptions) {
   };
 }
 
+export async function removeFilesFromSupabaseStorage(
+  bucket: string,
+  paths: Array<string | null | undefined>,
+  client: SupabaseClient = supabase
+) {
+  const normalizedPaths = paths
+    .map((path) => extractSupabaseStoragePath(bucket, path))
+    .filter((path): path is string => Boolean(path));
+
+  if (!normalizedPaths.length) {
+    return;
+  }
+
+  const { error } = await client.storage.from(bucket).remove(normalizedPaths);
+  if (error) {
+    throw error;
+  }
+}
+
 export function extractSupabaseStoragePath(bucket: string, value?: string | null) {
   if (!value) {
     return null;

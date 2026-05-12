@@ -2,10 +2,10 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { createThemedStyles, useAppTheme } from '../theme';
 import { tr } from '../translations';
+import { signOut } from '../../hooks/useUserData';
 
 export default function AdminSettingsScreen() {
   const theme = useAppTheme();
@@ -17,7 +17,7 @@ export default function AdminSettingsScreen() {
         text: tr.auth.logout, 
         style: 'destructive',
         onPress: async () => {
-          await AsyncStorage.removeItem('user_data');
+          await signOut();
           router.replace('/login');
         }
       }
@@ -30,12 +30,11 @@ export default function AdminSettingsScreen() {
         <Text style={styles.title}>{tr.admin.systemSettings}</Text>
       </View>
       <ScrollView contentContainerStyle={styles.scroll}>
-        
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{tr.admin.agentManagement}</Text>
-          <TouchableOpacity style={styles.settingItem}>
-            <Ionicons name="person-remove-outline" size={20} color={theme.colors.error} />
-            <Text style={[styles.settingText, { color: theme.colors.error }]}>{tr.admin.suspendAgentAccount}</Text>
+          <Text style={styles.sectionTitle}>Gelistirme</Text>
+          <TouchableOpacity style={styles.settingItem} onPress={() => router.push('/admin/dev-tools' as never)}>
+            <Ionicons name="construct-outline" size={20} color={theme.colors.primary} />
+            <Text style={styles.settingText}>Kullanici baglama araclari</Text>
           </TouchableOpacity>
         </View>
 

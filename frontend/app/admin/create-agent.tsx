@@ -23,8 +23,6 @@ import { createAdminStandaloneAgent, uploadAdminPublicFile } from '../../service
 import { normalizeHexColor, getContrastTextColor } from '../../utils/branding';
 import LocationPicker from '../../components/Shared/LocationPicker';
 
-const TRIAL_PASSWORD = '1234';
-
 export default function CreateAgentScreen() {
   const theme = useAppTheme();
   const styles = useStyles();
@@ -97,7 +95,7 @@ export default function CreateAgentScreen() {
 
       await createAdminStandaloneAgent({
         email: email.trim().toLowerCase(),
-        password: TRIAL_PASSWORD,
+        password: null,
         full_name: fullName.trim(),
         phone: phone.trim() || null,
         city: city.trim(),
@@ -109,7 +107,7 @@ export default function CreateAgentScreen() {
 
       Alert.alert(
         'Basarili',
-        `Bağımsız emlakçı oluşturuldu. Giriş e-postası: ${email.trim().toLowerCase()} | Varsayılan şifre: ${TRIAL_PASSWORD}`,
+        `Bağımsız emlakçı oluşturuldu. Giriş e-postası: ${email.trim().toLowerCase()}. Geçici şifre backend ortam ayarlarından belirlenir.`,
         [{ text: 'Tamam', onPress: () => router.replace('/admin/companies') }]
       );
     } catch (error: any) {
@@ -173,7 +171,7 @@ export default function CreateAgentScreen() {
               onDistrictChange={setDistrict}
               required
             />
-            <Text style={styles.helper}>Varsayılan şifre: 1234</Text>
+            <Text style={styles.helper}>Geçici şifre backend ortam ayarlarından belirlenir.</Text>
           </View>
 
           <View style={styles.section}>

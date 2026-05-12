@@ -104,6 +104,11 @@ function RootNavigator() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const showGlobalNav = shouldShowGlobalBottomNav(pathname);
+  const needsLegalAcceptance =
+    !!userData &&
+    userData.status !== 'pending' &&
+    !userData.terms_accepted_at &&
+    pathname !== '/legal-acceptance';
 
   useEffect(() => {
     const isPendingInviteUser =
@@ -121,6 +126,16 @@ function RootNavigator() {
   }, [pathname, router, userData?.role, userData?.status]);
 
   useEffect(() => {
+    if (!needsLegalAcceptance) {
+      return;
+    }
+    if (pathname === '/' || pathname === '/login' || pathname === '/register' || pathname === '/set-password' || pathname === '/forgot-password') {
+      return;
+    }
+    router.replace('/legal-acceptance' as any);
+  }, [needsLegalAcceptance, pathname, router]);
+
+  useEffect(() => {
     if (!isSupabaseConfigured) {
       return;
     }
@@ -132,7 +147,7 @@ function RootNavigator() {
         return;
       }
 
-      if (pathname === '/' || pathname === '/login' || pathname === '/register' || pathname === '/set-password') {
+      if (pathname === '/' || pathname === '/login' || pathname === '/register' || pathname === '/set-password' || pathname === '/forgot-password' || pathname === '/legal-acceptance') {
         return;
       }
 

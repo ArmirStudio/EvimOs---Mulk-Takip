@@ -1,9 +1,9 @@
-# Veritabanı Şeması
+# Veritabani Semasi
 
-Bu dosya canlı tabloların kritik alanlarını özetler.
+Bu dosya canli tablolarin kritik alanlarini ozetler. Tam kaynak icin `supabase/schema_parts/` ve `supabase/migrations/` kullanilir.
 
 ## users
-Önemli kolonlar:
+Onemli kolonlar:
 - `id`, `auth_id`, `email`, `full_name`, `phone`
 - `role`: `admin | agent | landlord | tenant | employee`
 - `status`: `pending | active`
@@ -13,17 +13,20 @@ Bu dosya canlı tabloların kritik alanlarını özetler.
 - `terms_accepted_at`, `first_login`
 - `created_at`, `updated_at`
 
-Not:
-- Davetle gelen tenant/landlord `pending` başlar.
-- Profil adı kullanıcının kendi adıdır; takma ad burada tutulmaz.
+Kurallar:
+- Tenant, landlord ve employee bir agent altina `created_by = agent.users.id` ile baglanir.
+- Agent kaydi opsiyonel olarak `agency_id` ile agency altina baglanir.
+- `terms_accepted_at` bos olan aktif kullanici ilk giriste `/legal-acceptance` ekranina yonlendirilir.
+- `first_login` yasal kabulden sonra `false` olur.
+- Admin dev tools mevcut kolonlari kullanir; bu paket icin yeni tablo gerekmedi.
 
 ## invites
-Agent kontrollü tenant/landlord/employee davetleri.
+Agent kontrollu tenant, landlord ve employee davetleri.
 
-Önemli kolonlar:
+Onemli kolonlar:
 - `id`, `office_owner_id`, `created_by`
 - `role`: `tenant | landlord | employee`
-- `contact_label`: agent takma adı
+- `contact_label`
 - `token_hash`, `code_hash`
 - `prefill_full_name`, `prefill_phone`, `prefill_email`
 - `expires_at`, `used_at`, `used_by`
@@ -33,107 +36,91 @@ Agent kontrollü tenant/landlord/employee davetleri.
 
 Kurallar:
 - Ham token ve ham kod DB'de saklanmaz.
-- `contact_label` profil adı değildir.
-- `employee_access_level`: agent onay anında `full | limited` atar; invite oluşturulurken sorulmaz.
+- `contact_label` agent'in ozel takip adidir; profil adi degildir.
+- Davetli rol secemez; rol davetten gelir.
 
-## invite_events
-Event tipleri: `created | registered | reminded | approved | rejected | label_updated | revoked`
+## agencies
+Sirket/ofis kayitlari admin tarafindan yonetilir. Agent kaydi `users.agency_id` ile agency altina baglanabilir.
 
 ## properties
-- Aktif model `properties.tenant_id` ve `properties.landlord_id` üzerindedir.
-- Çoklu property assignment bu fazda yoktur.
-
-## team_meetings
-Ofis ekibinin toplantı kayıtları.
-
-Önemli kolonlar:
-- `id`
-- `office_owner_id` — agent'ın users.id (ekip kimliği)
-- `created_by` — toplantıyı oluşturan users.id
-- `title`, `description`, `notes`
-- `scheduled_at` — planlanan tarih/saat (TIMESTAMPTZ)
-- `status`: `scheduled | completed | cancelled`
-- `created_at`, `updated_at`
-
-RLS:
-- Agent kendi ofisine ait toplantıları okur/yazar.
-- Employee kendi agent'ının toplantılarını okur/yazar.
-- Admin hepsini görür.
+- Aktif model `properties.tenant_id` ve `properties.landlord_id` uzerindedir.
+- Coklu property assignment bu fazda yoktur.
 
 ## team_messages
-Ekip içi sohbet.
+Ekip ici sohbet.
 
-Önemli kolonlar:
+Onemli kolonlar:
 - `id`
-- `office_owner_id` — agent'ın users.id
-- `sender_id` — mesajı gönderen users.id
-- `body` — mesaj içeriği (max 2000 karakter)
-- `reply_to_id` — yanıt verilen mesajın id'si (FK → team_messages, nullable)
+- `office_owner_id`: agent'in `users.id` degeri
+- `sender_id`
+- `body`
+- `reply_to_id`
 - `created_at`
 
-Not: `supabase/fix_team_messages.sql` eski `content/office_id` şemasını temizler.
-Migration: `supabase/migrations/20260507_team_messages_v2.sql` ile `reply_to_id` eklenir.
-
 ## team_message_attachments
-Ekip mesajlarına bağlı private dosya ekleri.
+Ekip mesajlarina bagli private dosya ekleri.
 
-Önemli kolonlar:
+Onemli kolonlar:
 - `id`
-- `message_id` — bağlı `team_messages.id` (ON DELETE CASCADE)
-- `office_owner_id` — agent'ın users.id
-- `uploaded_by` — eki yükleyen users.id
-- `bucket` — sabit `team-message-files`
-- `storage_path` — `office_owner_id/uploaded_by/...` path formatı
+- `message_id`
+- `office_owner_id`
+- `uploaded_by`
+- `bucket`: `team-message-files`
+- `storage_path`: `office_owner_id/uploaded_by/...`
 - `file_name`, `mime_type`, `size_bytes`
 - `kind`: `image | document | file`
 - `created_at`
 
 Kurallar:
-- Mesaj başına en fazla 5 ek.
-- Dosya başına en fazla 10 MB; bucket tarafında `file_size_limit = 10485760`.
+- Mesaj basina en fazla 5 ek.
+- Dosya basina en fazla 10 MB.
 - `audio/*` ve `video/*` mesaj eki olarak kabul edilmez.
-- Ekler public URL değildir; görüntüleme private bucket + signed URL ile yapılır.
-
-Migration: `supabase/migrations/20260508_team_message_attachments.sql`.
+- Ekler public URL degildir; private bucket + signed URL ile acilir.
 
 ## team_message_reads
-Kullanıcı başına son okuma zamanı (okundu/okunmadı tiki için).
+Kullanici basina son okuma zamani.
 
-Önemli kolonlar:
-- `office_owner_id` — agent'ın users.id (PK)
-- `user_id` — okuyan users.id (PK)
-- `last_read_at` — TIMESTAMPTZ
+Onemli kolonlar:
+- `office_owner_id` PK parcasi
+- `user_id` PK parcasi
+- `last_read_at`
 
-RLS:
-- Ofis üyeleri kendi ofislerinin okuma kayıtlarını görür.
-- Her kullanıcı yalnızca kendi kaydını yazar (UPSERT).
+## team_meetings
+Ofis ekibinin toplanti kayitlari.
 
-## office_expenses
-Ofis gider kayıtları.
-
-Önemli kolonlar:
+Onemli kolonlar:
 - `id`
-- `office_owner_id` — agent'ın users.id
-- `created_by` — kaydı ekleyen users.id
-- `amount` — NUMERIC, > 0
-- `category`: `kira | fatura | ulasim | yemek | malzeme | diger`
-- `category_label` — opsiyonel Türkçe etiket
-- `description` — opsiyonel açıklama
-- `expense_date` — DATE (YYYY-MM-DD)
-- `receipt_url` — opsiyonel makbuz dosya yolu
+- `office_owner_id`
+- `created_by`
+- `title`, `description`, `notes`
+- `scheduled_at`
+- `status`: `scheduled | completed | cancelled`
 - `created_at`, `updated_at`
 
-RLS:
-- Tüm ofis üyeleri (`office_owner_id` eşleşme) kayıtları okur.
-- Agent ve employee kayıt oluşturabilir.
-- Employee yalnızca `created_by = auth.uid()` olduğu kaydı düzenleyebilir/silebilir.
-- Agent tüm ofis kayıtlarını düzenleyebilir/silebilir.
-- Admin hepsini görür.
+## office_expenses
+Ofis gider kayitlari.
 
-Deployment: `supabase/migrations/20260507_office_expenses.sql` çalıştırılmalı.
+Onemli kolonlar:
+- `id`
+- `office_owner_id`
+- `created_by`
+- `amount`
+- `category`: `kira | fatura | ulasim | yemek | malzeme | diger`
+- `category_label`
+- `description`
+- `expense_date`
+- `receipt_url`
+- `created_at`, `updated_at`
 
-## Canlı Kaynaklar
+Kurallar:
+- Agent tum ofis giderlerini duzenleyebilir ve silebilir.
+- Employee yalniz kendi olusturdugu giderleri duzenleyebilir ve silebilir.
+
+## campaign Tablolari
+Reklam kampanyasi tablolari `admin-web/` ve backend `/api/admin/*` tarafindan yonetilir. Mobil uygulama kampanya CRUD yapmaz; yalniz dashboard delivery ve impression yazimi vardir.
+
+## Canli Kaynaklar
 - Fresh kurulum: `supabase/schema_parts/*`
-- Mevcut DB patch: `supabase/current_db_invites_patch.sql`
-- team_messages fix: `supabase/fix_team_messages.sql`
-- Bekleyen migration'lar: `supabase/migrations/20260507_*.sql`, `supabase/migrations/20260508_team_message_attachments.sql`
+- Migrationlar: `supabase/migrations/*`
+- RLS ozeti: `kitap/rls.md`
+- Yetki matrisi: `kitap/permissions.md`

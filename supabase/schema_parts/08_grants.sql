@@ -55,5 +55,25 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.office_contacts       TO authenti
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.contact_nicknames    TO authenticated;
 GRANT ALL ON public.office_contacts, public.contact_nicknames TO service_role;
 
+REVOKE ALL ON FUNCTION public.get_current_user_id() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.get_current_user_role() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.get_current_employee_access_level() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.get_current_office_owner_id() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.is_full_employee() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.current_user_can_view_property(UUID) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.current_user_can_manage_property(UUID) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.current_user_can_view_maintenance_scope(UUID) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.current_user_office_owner_id() FROM PUBLIC, anon;
+
+GRANT EXECUTE ON FUNCTION public.get_current_user_id() TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_current_user_role() TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_current_employee_access_level() TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_current_office_owner_id() TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.is_full_employee() TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.current_user_can_view_property(UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.current_user_can_manage_property(UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.current_user_can_view_maintenance_scope(UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.current_user_office_owner_id() TO authenticated, service_role;
+
 
 -- ============================================================

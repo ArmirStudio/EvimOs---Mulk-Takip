@@ -32,7 +32,7 @@ export const brandColors = {
   brownDark: '#6B5C4D',
 } as const;
 
-export const publicSurface = {
+export const publicSurface: Record<string, string> = {
   heroPanel: '#F4EEE4',
   heroPanelStrong: '#ECE3D8',
   heroTint: 'rgba(35, 83, 83, 0.08)',

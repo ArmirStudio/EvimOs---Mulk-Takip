@@ -1,66 +1,61 @@
-# İş Akışları
+# Is Akislari
 
-Bu dosya canlı kritik akışları özetler.
+Bu dosya canli kritik akislarin guncel ozetidir.
 
-## Giriş ve Kayıt
-1. Açılış ekranında `Giriş Yap` ve `Kayıt Ol` bulunur.
-2. `Giriş Yap` oturum ekranına gider.
-3. `Kayıt Ol` davet kodu ekranına gider; tenant/landlord serbest kayıt yapamaz.
-4. Bozuk davet linkinde kullanıcı aynı ekranda davet kodu girerek devam edebilir.
-5. Label ve inputlar bitişik tasarlanmaz; form ritmi token spacing ile korunur.
+## Giris
+1. Kullanici `/login` ekraninda e-posta veya telefon ve sifre girer.
+2. Telefon girilirse backend `/api/auth/resolve-identifier` telefonu e-postaya cozer.
+3. Supabase `signInWithPassword` ile oturum acilir.
+4. `buildUserDataForSession()` `public.users` profilini, role, status ve marka bilgisini yukler.
+5. Aktif kullanicinin `terms_accepted_at` alani bos ise `/legal-acceptance` ekranina yonlenir.
+6. Kabul tamamlanmissa role gore dashboard acilir:
+   - `admin` -> `/admin/dashboard`
+   - `agent` veya `employee` -> `/agent/dashboard`
+   - `landlord` -> `/landlord/dashboard`
+   - `tenant` -> `/tenant/dashboard`
+
+## Ilk Giris Sozlesme Kabul
+1. `/legal-acceptance` blocking ekrandir; aktif kullanici kabul etmeden uygulama icine devam edemez.
+2. Kullanici "Okudum, anladim ve kabul ediyorum" kutusunu isaretler.
+3. Frontend `PATCH /api/users/me/legal-acceptance` cagrisi yapar.
+4. Backend `terms_accepted_at = now()` ve `first_login = false` yazar.
+5. Session cache guncellenir ve kullanici rolune gore dashboard'a doner.
+
+## Sifremi Unuttum
+1. Login ekranindan `/forgot-password` acilir.
+2. Kullanici e-posta veya telefon girer.
+3. Telefon ise backend `/api/auth/resolve-identifier` ile e-posta bulunur.
+4. Supabase `resetPasswordForEmail` cagrisi yapilir.
+5. Kullanici e-postadaki linke tiklayinca deep link `auth/callback` olarak yakalanir.
+6. Root layout OTP'yi dogrular ve `/set-password` ekranina yonlendirir.
+7. Yeni sifre `supabase.auth.updateUser({ password })` ile yazilir.
 
 ## Davet Linki ve Kodu
-1. Agent veya full employee rol seçer: kiracı, ev sahibi veya çalışan.
-2. Kişi manuel girilir veya cihaz rehberinden tek kişi seçilir.
-3. Rehberden yalnız seçilen kişinin bilgisi forma alınır.
-4. Agent takma ad alanını doldurabilir.
-5. Backend tek kullanımlık link ve 8 karakterlik kod üretir.
-6. Link ve kod aynı daveti temsil eder; biri kullanılınca diğeri de kapanır.
+1. Agent veya full employee tenant, landlord veya employee daveti olusturur.
+2. Backend tek kullanmalik link ve 8 karakterlik kod uretir.
+3. Link ve kod ayni daveti temsil eder; biri kullanilinca digeri kapanir.
+4. Davetli rol secmez; rol davetten gelir.
+5. Yeni hesap `pending` baslar.
+6. Agent veya yetkili calisan pending kullaniciyi onaylar ya da reddeder.
 
-## Pending ve Onay
-1. Kullanıcı link veya kodla kayıt formunu açar.
-2. Rol davetten gelir; kullanıcı rol seçemez.
-3. Yeni hesap `pending` başlar.
-4. Pending tenant/landlord sadece bekleme ekranını görür.
-5. Agent/full employee pending kullanıcıyı onaylayabilir veya reddedebilir.
-6. Agent takma adı görebilir ve düzenleyebilir; full employee göremez.
+## Admin Dev Tools
+1. Admin mobil uygulamada `/admin/dev-tools` ekranini acar.
+2. Backend `GET /api/admin/dev/users` ile kullanicilari listeler.
+3. Backend `GET /api/admin/dev/agents` ile agent ve agency seceneklerini listeler.
+4. Admin kullaniciyi role atar:
+   - tenant / landlord / employee icin hedef agent zorunludur.
+   - employee icin `employee_access_level` secilir.
+   - agent icin `agency_id` secilebilir veya bos birakilabilir.
+5. `POST /api/admin/dev/link-user` `users` satirini ve Supabase Auth metadata'sini backend service-role ile gunceller.
 
-## Tenant Talepler
-1. Tenant alt barda `Talepler` ekranına gider; alt barda FAB yoktur.
-2. Arıza bildirimi ve dekont yükleme aksiyonları talepler yüzeyi içinden açılır.
+## Ekibim ve Mesajlasma
+1. Agent/employee alt barda `Ekibim` ekranina gider.
+2. TeamHub tablari: Gorevler, Duyurular, Toplantilar, Harcamalar.
+3. Mesajlar `/agent/team-messages` tam ekran route'unda acilir.
+4. Ekli mesajlarda dosyalar once private `team-message-files` bucket'ina yuklenir.
+5. Backend mesaj ve attachment metadata kaydini olusturur.
 
-## Ekibim ve Mesajlaşma
-1. Agent/employee alt barda `Ekibim` → `TeamHubScreen` açılır.
-2. Tab bar yatay kaydırılabilir: **Görevler · Duyurular · Toplantılar · Harcamalar**.
-3. Tab geçişleri yerel `useState` ile yönetilir — URL param sadece ilk açılışta ve deep link için okunur; animasyon yoktur.
-4. Header sağındaki mesaj ikonu → `/agent/team-messages` sağdan kayarak tam ekran açılır.
-5. Harcama ekle: Harcamalar tab'ında "Harcama Ekle" → bottom sheet → tutar gir, kategori seç, kaydet.
-6. Employee kendi harcamasını açıklama/tarih değişikliğiyle düzenleyebilir; miktar ve kategori değiştirilemez.
-7. Agent herkesin harcamasını silebilir.
-
-## Mesajlaşma UX
-1. Ekran açılınca en alta scroll yapılır; `markMessagesRead` çağrılır.
-2. Mesaj balonları: kendi mesajı sağda (açık renk), diğerlerinin mesajı solda (avatar baş harfi + gönderen adı).
-3. Gün ayraçları: "Bugün", "Dün" veya "5 Ocak 2026" formatında günler arasında gösterilir.
-4. Uzun basış (long press) mesaj üzerinde → yanıt barı açılır (altta önizleme + × ile iptal).
-5. Yanıt barı aktifken gönderilen mesaj, alıcıda quote kutusu içinde gösterilir.
-6. Gördü tiki: tek tik ✓ = gönderildi, çift tik ✓✓ = en az 1 üye gördü (mavi).
-7. Klavye açılınca composer yukarı kayar (KeyboardAvoidingView).
-8. Composer'da eski kamera/mikrofon placeholder ikonları yoktur; tek `+` butonu bulunur.
-9. `+` menüsü yukarı açılır ve `Kamera`, `Galeri`, `Dosyalar` seçeneklerini gösterir.
-10. Kamera/galeri yalnız görsel ekler; dosya seçicide `audio/*` ve `video/*` reddedilir.
-11. Mesaj başına en fazla 5 ek ve dosya başına 10 MB sınırı uygulanır; seçilen ekler gönderimden önce composer üstünde silinebilir chip olarak görünür.
-12. Ekli mesaj gönderiminde dosyalar önce `team-message-files` private bucket'a yüklenir, sonra backend mesaj ve attachment metadata kaydını oluşturur.
-
-## Çalışan Davet ve Onay
-1. Agent `Ekibim → Çalışan Ekle` veya `/agent/invite` üzerinden çalışan davet eder.
-2. Çalışan link/kod ile pending hesap oluşturur.
-3. Agent pending listesinde tam/sınırlı yetki seçerek onaylar.
-4. Onay anında `employee_access_level` set edilir; davet oluşturulurken sorulmaz.
-
-## Landlord Talepler ve Arşiv
-1. Landlord alt barda `Talepler` ekranına gider; `Arşiv` ayrı alt bar sekmesi değildir.
-2. `Aktif Talepler` sekmesinde bakım talepleri izlenir.
-3. `Dekontlar` sekmesinde ödeme dekontları listelenir ve detay açılır.
-4. `Belgeler` sekmesinde mülk belgeleri listelenir ve signed URL ile açılır.
-5. Eski `/landlord/archive` linki talepler/dekontlar sekmesine yönlenir.
+## Landlord ve Tenant Operasyonlari
+1. Tenant talepler yuzeyinden ariza bildirimi ve dekont yukleme akislarini acar.
+2. Landlord talepler ekraninda aktif talepler, dekontlar ve belgeler sekmelerini gorur.
+3. Eski archive linkleri ilgili operasyon yuzeylerine yonlendirilir.
