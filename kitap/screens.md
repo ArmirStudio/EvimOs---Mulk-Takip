@@ -3,6 +3,7 @@
 Bu dosya canli route haritasini ve rol bazli erisimi ozetler.
 
 ## Public ve Auth Route'lari
+
 | Route | Dosya | Aciklama |
 |---|---|---|
 | `/` | `frontend/app/index.tsx` | Session kontrolu ve role gore yonlendirme |
@@ -11,9 +12,10 @@ Bu dosya canli route haritasini ve rol bazli erisimi ozetler.
 | `/set-password` | `frontend/app/set-password.tsx` | Davet veya reset sonrasinda yeni sifre belirleme |
 | `/register` | `frontend/app/register.tsx` | Davet kodu ile kayit |
 | `/invite/[token]` | `frontend/app/invite/[token].tsx` | Link tabanli davet kaydi |
-| `/legal-acceptance` | `frontend/app/legal-acceptance.tsx` | Ilk giris sozlesme kabul ekrani |
+| `/legal-acceptance` | `frontend/app/legal-acceptance.tsx` | Ilk giris sozlesme kabul ekrani (blocking) |
 
 ## Admin Route'lari
+
 | Route | Dosya | Aciklama |
 |---|---|---|
 | `/admin/dashboard` | `frontend/app/admin/dashboard.tsx` | Mobil admin dashboard |
@@ -29,6 +31,7 @@ Bu dosya canli route haritasini ve rol bazli erisimi ozetler.
 Admin bottom nav: `Panel`, `Sirketler`, `Iletisim`, `Gelisim`, `Ayarlar`. `Gelisim` sekmesi gecici dev tools sayfasina gider.
 
 ## Rol Route'lari
+
 | Route | Aciklama |
 |---|---|
 | `/{role}/dashboard` | Ana panel |
@@ -44,8 +47,10 @@ Admin bottom nav: `Panel`, `Sirketler`, `Iletisim`, `Gelisim`, `Ayarlar`. `Gelis
 `employee` rolu `/agent/*` route ailesini kullanir.
 
 ## Agent Route'lari
+
 | Route | Aciklama |
 |---|---|
+| `/agent/force-password-change` | Zorunlu sifre belirleme (ilk giris, yalniz agent) |
 | `/agent/team` | Ekip merkezi |
 | `/agent/team-messages` | Tam ekran ekip mesajlasmasi |
 | `/agent/team-member` | Calisan detay |
@@ -60,6 +65,7 @@ Admin bottom nav: `Panel`, `Sirketler`, `Iletisim`, `Gelisim`, `Ayarlar`. `Gelis
 | `/agent/pending-invites` | Bekleyen davetler |
 
 ## Landlord ve Tenant Route'lari
+
 | Route | Aciklama |
 |---|---|
 | `/landlord/tenants` | Kiraci listesi |
@@ -69,17 +75,20 @@ Admin bottom nav: `Panel`, `Sirketler`, `Iletisim`, `Gelisim`, `Ayarlar`. `Gelis
 | `/tenant/upload-receipt` | Dekont yukleme |
 
 ## Bottom Nav
-- Admin: `Panel`, `Sirketler`, `Iletisim`, `Gelisim`, `Ayarlar`.
-- Agent: `Ana Sayfa`, `Mulkler`, `Talepler`, `Ekibim`, `Profil`.
-- Employee: `Ana Sayfa`, `Mulkler`, `Talepler`, `Ekibim`, `Profil`.
-- Landlord: `Ana Sayfa`, `Mulkler`, `Talepler`, `Profil`.
-- Tenant: `Ana Sayfa`, `Evim`, `Taleplerim`, `Profil`.
+
+- Admin: `Panel`, `Sirketler`, `Iletisim`, `Gelisim`, `Ayarlar`
+- Agent: `Ana Sayfa`, `Mulkler`, `Talepler`, `Ekibim`, `Profil`
+- Employee: `Ana Sayfa`, `Mulkler`, `Talepler`, `Ekibim`, `Profil`
+- Landlord: `Ana Sayfa`, `Mulkler`, `Talepler`, `Profil`
+- Tenant: `Ana Sayfa`, `Evim`, `Taleplerim`, `Profil`
 
 ## Gizli Route'lar
-Alt barda gorunmeyip akistan acilan ana route'lar:
+
+Alt barda gorunmeyip akistan acilan route'lar:
 - `/forgot-password`
 - `/set-password`
 - `/legal-acceptance`
+- `/agent/force-password-change`
 - `/agent/team-messages`
 - `/agent/contact-detail`
 - `/agent/team-member`
@@ -89,12 +98,27 @@ Alt barda gorunmeyip akistan acilan ana route'lar:
 - `/tenant/upload-receipt`
 
 ## Bildirim Deep Link'leri
-- `task` -> `/agent/team?tab=tasks&openTaskId={id}`
-- `announcement` -> `/agent/team?tab=announcements`
-- `team_message` -> `/agent/team-messages`
+
+- `task` → `/agent/team?tab=tasks&openTaskId={id}`
+- `announcement` → `/agent/team?tab=announcements`
+- `team_message` → `/agent/team-messages`
+
+## Navigasyon Animasyon Kurallari
+
+`frontend/utils/navigationTransitions.ts` route turune gore animasyon atar:
+
+| Tur | Animasyon |
+|---|---|
+| Ana ekranlar (dashboard, properties vb.) | `animation: 'none'` |
+| Detay ekranlar (property-detail, contact-detail vb.) | `animation: 'slide_from_right'` |
+| Wizard/form ekranlar (create-*, force-password-change) | `animation: 'fade_from_bottom'` |
+| Login, legal-acceptance | `animation: 'fade'` |
 
 ## Mobil QA Notlari
-- Wizard ve form ekranlarinda alt CTA/footer safe-area padding ile calismali.
-- `/agent/create-property`, `/agent/add-tenant`, `/agent/edit-property`, `/agent/create-user`, `/tenant/upload-receipt` ve `/tenant/maintenance-request` footer/safe-area regresyonlari icin kontrol edilir.
-- `/legal-acceptance` aktif kullaniciyi dashboard oncesinde bloke eder.
-- `/admin/dev-tools` sadece admin oturumuyla manuel smoke test edilir.
+
+- Wizard ve form ekranlarinda alt CTA/footer safe-area padding ile calismali
+- Agent ilk giris: legal-acceptance → force-password-change → dashboard akisini test et
+- ActionSlider hint animasyonu bakım talebi veya dekont detay ekraninda gorulmeli
+- `/agent/create-property`, `/agent/edit-property`, `/agent/create-contact` klavye acilinca inputlar gorunur olmali
+- `/legal-acceptance`: iki kutu isaretlenmeden "Devam Et" disabled olmali
+- `/admin/dev-tools` sadece admin oturumuyla manuel smoke test edilir

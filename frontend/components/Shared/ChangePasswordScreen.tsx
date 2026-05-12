@@ -148,7 +148,7 @@ export default function ChangePasswordScreen() {
   return (
     <AnimatedScreen type="fade">
       <SafeAreaView style={s.container}>
-        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background} />
+        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background} translucent />
         <KeyboardAwareScrollView
           scrollRef={scrollRef}
           showsVerticalScrollIndicator={false}

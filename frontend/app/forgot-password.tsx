@@ -65,7 +65,7 @@ export default function ForgotPasswordScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background} />
+      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background} translucent />
       <KeyboardAwareScrollView scrollRef={scrollRef} containerStyle={styles.keyboardView}>
         <View style={styles.content}>
           <View style={styles.header}>
