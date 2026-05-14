@@ -151,6 +151,9 @@ Android icin `UIManager.setLayoutAnimationEnabledExperimental(true)` set edilmis
 | `PropertiesScreen` | Mulk listesi |
 | `PropertyDetailScreen` | Mulk detay (hero carousel, seksiyonlar) |
 | `MaintenanceScreen` | Talepler ve dekontlar |
+| `MaintenanceDetailView` | Bakim talebi detay gorunumu |
+| `WheelTimePickerSheet` | Tekerlek tabanli saat secici modal |
+| `CompactDatePicker` | Takvim grid tarih secici modal |
 | `ReceiptsScreen` | Dekont listesi |
 | `ArchiveScreen` | Arsiv ve belge yuzeyi |
 | `SettingsScreen` | Profil, ayarlar, rehber ve yasal modaller |
@@ -209,6 +212,28 @@ Standart pattern:
 - **KVKK/Gizlilik Politikasi** — 6 seksiyon (Veri Sorumlusu, Islenen Veriler, Amaclar, Guvenlik, Haklariniz, Saklama Suresi)
 - Her modal altta EvimosSVGLogo (`variant="full"`) ve telif hakki notu gosterir
 - Sirket adres/telefon/vergi no alanlari `[Eklenecek]` placeholder ile birakilmistir
+
+## WheelTimePickerSheet
+
+`components/Shared/WheelTimePickerSheet.tsx` — FlatList tabanli iki kolonlu (saat / dakika) tekerlek saat secici.
+
+- `visible`, `value` ("HH:MM"), `onChange`, `title`, `minuteStep` (varsayilan 5) prop alir
+- Secili satiri vurgulayan `selectionWindow` View'i JSX'te `FlatList`'ten **once** render edilmeli; sonraya alinirsa mavi highlight list item metinlerinin uzerini orter (z-order kurali)
+- `TeamMeetingsPanel` ve `TaskComposerSheet` bu bileseni kullanir
+- Disinda baska saat secici bileşeni yoktur; yeni saat secme ihtiyaclari bu bilesene yonlendirilmeli
+
+## MaintenanceDetailView — Gorunum Kurallari
+
+`components/Shared/MaintenanceDetailView.tsx`
+
+- **Gorevli Usta bolumu** (`technicianSection`): sadece `manager === true` VE `request.status !== 'completed' && request.status !== 'rejected'` oldugunda gosterilir. Tamamlanmis veya reddedilmis taleplerde usta atama bolumu gizlenmeli.
+- Aksiyon paneli (durum gecis butonlari) ayni status kosulunu kullanir; tutarlilik icin her ikisi birlikte degistirilmeli.
+
+## MaintenanceScreen — Kart Stili Kurallari
+
+`components/Shared/MaintenanceScreen.tsx`
+
+- `nextActionCard` stilinde `paddingHorizontal` ve `paddingVertical` her ikisi de zorunludur; sadece dikey padding olmasi icerideki metni sola yapistirir.
 
 ## Upload Hazirlama
 

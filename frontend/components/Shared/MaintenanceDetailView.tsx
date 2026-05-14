@@ -462,7 +462,7 @@ export const MaintenanceDetailView: React.FC<MaintenanceDetailViewProps> = ({
           </View>
         </Animated.View>
 
-        {manager && (
+        {manager && request.status !== 'completed' && request.status !== 'rejected' && (
           <Animated.View entering={FadeInUp.delay(200)} style={styles.technicianSection}>
             <View style={styles.technicianHeader}>
               <Text style={styles.sectionTitle}>Görevli Usta</Text>
@@ -539,7 +539,7 @@ export const MaintenanceDetailView: React.FC<MaintenanceDetailViewProps> = ({
           </Animated.View>
         )}
 
-        {manager && (
+        {manager && request.status !== 'completed' && request.status !== 'rejected' && (
           <Animated.View entering={FadeInUp.delay(260)} style={styles.managerCard}>
             <Text style={styles.sectionTitle}>{tr.maintenance.actionPanel}</Text>
             <Text style={styles.helperText}>{tr.maintenance.actionPanelHelper}</Text>

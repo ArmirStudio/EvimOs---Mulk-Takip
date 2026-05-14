@@ -402,15 +402,15 @@ export default function MaintenanceScreen() {
         <View style={s.heroStatGrid}>
           <View style={s.heroStatCard}>
             <Text style={s.heroStatValue}>{summary.pending + summary.inProgress}</Text>
-            <Text style={s.heroStatLabel}>{tr.maintenance.openWork}</Text>
+            <Text style={s.heroStatLabel} numberOfLines={2}>{tr.maintenance.openWork}</Text>
           </View>
           <View style={s.heroStatCard}>
             <Text style={s.heroStatValue}>{summary.awaitingTenantApproval}</Text>
-            <Text style={s.heroStatLabel}>{tr.maintenance.waitingApprovalShort}</Text>
+            <Text style={s.heroStatLabel} numberOfLines={2}>{tr.maintenance.waitingApprovalShort}</Text>
           </View>
           <View style={s.heroStatCard}>
             <Text style={s.heroStatValue}>{summary.completed}</Text>
-            <Text style={s.heroStatLabel}>{tr.maintenance.completed}</Text>
+            <Text style={s.heroStatLabel} numberOfLines={2}>{tr.maintenance.completed}</Text>
           </View>
         </View>
       );
@@ -421,15 +421,15 @@ export default function MaintenanceScreen() {
         <View style={s.heroStatGrid}>
           <View style={s.heroStatCard}>
             <Text style={s.heroStatValue}>{summary.pending + summary.inProgress}</Text>
-            <Text style={s.heroStatLabel}>{tr.maintenance.openRequest}</Text>
+            <Text style={s.heroStatLabel} numberOfLines={2}>{tr.maintenance.openRequest}</Text>
           </View>
           <View style={s.heroStatCard}>
             <Text style={s.heroStatValue}>{summary.critical}</Text>
-            <Text style={s.heroStatLabel}>Kritik</Text>
+            <Text style={s.heroStatLabel} numberOfLines={2}>Kritik</Text>
           </View>
           <View style={s.heroStatCard}>
             <Text style={s.heroStatValue}>{summary.completed}</Text>
-            <Text style={s.heroStatLabel}>{tr.maintenance.closedItems}</Text>
+            <Text style={s.heroStatLabel} numberOfLines={2}>{tr.maintenance.closedItems}</Text>
           </View>
         </View>
       );
@@ -439,15 +439,15 @@ export default function MaintenanceScreen() {
         <View style={s.heroStatGrid}>
           <View style={s.heroStatCard}>
             <Text style={s.heroStatValue}>{summary.pending}</Text>
-            <Text style={s.heroStatLabel}>{tr.maintenance.firstActionQueue}</Text>
+            <Text style={s.heroStatLabel} numberOfLines={2}>{tr.maintenance.firstActionQueue}</Text>
           </View>
           <View style={s.heroStatCard}>
             <Text style={s.heroStatValue}>{summary.inProgress}</Text>
-            <Text style={s.heroStatLabel}>{tr.maintenance.fieldWorkQueue}</Text>
+            <Text style={s.heroStatLabel} numberOfLines={2}>{tr.maintenance.fieldWorkQueue}</Text>
           </View>
           <View style={s.heroStatCard}>
             <Text style={s.heroStatValue}>{summary.awaitingTenantApproval}</Text>
-            <Text style={s.heroStatLabel}>{tr.maintenance.waitingApproval}</Text>
+            <Text style={s.heroStatLabel} numberOfLines={2}>{tr.maintenance.waitingApproval}</Text>
           </View>
         </View>
       );
@@ -1142,13 +1142,16 @@ const useStyles = createThemedStyles((theme) =>
     heroStatCard: {
       flex: 1,
       paddingVertical: 14,
+      paddingHorizontal: 4,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: theme.colors.divider,
       alignItems: 'center',
+      minHeight: 72,
+      justifyContent: 'center',
     },
     heroStatValue: { fontSize: 20, fontWeight: '700', color: theme.colors.textPrimary },
-    heroStatLabel: { fontSize: 11, fontWeight: '700', color: theme.colors.textMuted, marginTop: 4, textTransform: 'uppercase' },
+    heroStatLabel: { fontSize: 10, fontWeight: '700', color: theme.colors.textMuted, marginTop: 4, textTransform: 'uppercase', textAlign: 'center' },
     filterScroll: { paddingHorizontal: 16, gap: 8, paddingBottom: 12 },
     filterChip: {
       height: 38,
@@ -1220,6 +1223,7 @@ const useStyles = createThemedStyles((theme) =>
       marginTop: 12,
       borderRadius: 16,
       paddingVertical: 12,
+      paddingHorizontal: 12,
       borderWidth: 1,
       borderColor: theme.colors.divider,
     },

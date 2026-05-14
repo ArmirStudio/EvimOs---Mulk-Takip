@@ -310,20 +310,20 @@ export default function TeamMeetingsPanel({ meetings, loading, error, isManager,
             </KeyboardAvoidingView>
           </Pressable>
         </Pressable>
+        <CompactDatePicker
+          visible={datePickerVisible}
+          onClose={() => setDatePickerVisible(false)}
+          onSelect={setScheduledDate}
+          currentValue={scheduledDate}
+        />
+        <WheelTimePickerSheet
+          visible={timePickerVisible}
+          onClose={() => setTimePickerVisible(false)}
+          onChange={setScheduledTime}
+          value={scheduledTime}
+          title="Toplantı saati seçin"
+        />
       </Modal>
-      <CompactDatePicker
-        visible={datePickerVisible}
-        onClose={() => setDatePickerVisible(false)}
-        onSelect={setScheduledDate}
-        currentValue={scheduledDate}
-      />
-      <WheelTimePickerSheet
-        visible={timePickerVisible}
-        onClose={() => setTimePickerVisible(false)}
-        onChange={setScheduledTime}
-        value={scheduledTime}
-        title="Toplantı saati seçin"
-      />
     </View>
   );
 }

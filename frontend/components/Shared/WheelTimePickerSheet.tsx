@@ -80,6 +80,7 @@ function WheelColumn({ values, selectedValue, onChange }: WheelColumnProps) {
 
   return (
     <View style={styles.wheelColumn}>
+      <View pointerEvents="none" style={styles.selectionWindow} />
       <FlatList
         ref={listRef}
         data={values}
@@ -98,7 +99,6 @@ function WheelColumn({ values, selectedValue, onChange }: WheelColumnProps) {
         onMomentumScrollEnd={(event) => onScrollEnd(event.nativeEvent.contentOffset.y)}
         onScrollEndDrag={(event) => onScrollEnd(event.nativeEvent.contentOffset.y)}
       />
-      <View pointerEvents="none" style={styles.selectionWindow} />
     </View>
   );
 }
